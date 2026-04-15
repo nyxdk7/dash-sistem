@@ -101,7 +101,9 @@ def dashboard():
         return redirect(url_for('minha_obra'))
 
     obras = Obra.query.all()
-    return render_template('dashboard.html', admin=True, obras=obras)
+    registros = DiarioObra.query.order_by(DiarioObra.data_registro.desc()).limit(10).all()
+
+    return render_template('dashboard.html', admin=True, obras=obras, registros=registros)
 
 
 @app.route('/minha-obra', methods=['GET', 'POST'])
