@@ -31,6 +31,7 @@ class Usuario(db.Model):
     nivel = db.Column(db.String(20), nullable=False, default='engenheiro')
     obra_id = db.Column(db.Integer, db.ForeignKey('obra.id'), nullable=True)
 
+
 class DiarioObra(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     descricao = db.Column(db.Text, nullable=False)
@@ -45,6 +46,7 @@ class DiarioObra(db.Model):
 
     usuario = db.relationship('Usuario')
     obra = db.relationship('Obra')
+
 
 with app.app_context():
     db.create_all()
@@ -126,19 +128,31 @@ def minha_obra():
         return "Obra não encontrada"
 
     if request.method == 'POST':
-        descricao = request.form.get('descricao')
-        clima = request.form.get('clima')
-        efetivo = request.form.get('efetivo')
-        ocorrencias = request.form.get('ocorrencias')
+        descricao = request.form.get('descricao', '').strip()
+        clima = request.form.get('clima', '').strip()
+        quantidades = request.form.getlist('quantidade[]')
+        funcoes = request.form.getlist('funcao[]')
+        ocorrencias = request.form.get('ocorrencias', '').strip()
+
+        efetivo_lista = []
+
+        for quantidade, funcao in zip(quantidades, funcoes):
+            quantidade = quantidade.strip()
+            funcao = funcao.strip()
+
+            if quantidade and funcao:
+                efetivo_lista.append(f"{quantidade} {funcao}")
+
+        efetivo = ", ".join(efetivo_lista) if efetivo_lista else None
 
         if not descricao:
             return "Preencha a descrição"
 
         novo_registro = DiarioObra(
             descricao=descricao,
-            clima=clima,
+            clima=clima if clima else None,
             efetivo=efetivo,
-            ocorrencias=ocorrencias,
+            ocorrencias=ocorrencias if ocorrencias else None,
             usuario_id=session.get('user_id'),
             obra_id=obra_id
         )
@@ -151,6 +165,7 @@ def minha_obra():
     registros = DiarioObra.query.filter_by(obra_id=obra_id).order_by(DiarioObra.data_registro.desc()).all()
 
     return render_template('minha_obra.html', obra=obra, registros=registros)
+
 
 @app.route('/contratos')
 @login_required
@@ -281,6 +296,7 @@ def excluir_obra(obra_id):
     db.session.commit()
 
     return redirect(url_for('admin'))
+
 
 @app.route('/excluir-registro/<int:id>', methods=['POST'])
 @login_required

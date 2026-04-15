@@ -21,8 +21,18 @@
     <label for="clima">Clima:</label><br>
     <input type="text" id="clima" name="clima" placeholder="Ex: Ensolarado"><br><br>
 
-    <label for="efetivo">Efetivo:</label><br>
-    <textarea id="efetivo" name="efetivo" rows="4" cols="60" placeholder="Ex: 1 servente, 2 rasteleiros, 1 operador de rolo"></textarea><br><br>
+    <h3>Efetivo</h3>
+
+<div id="lista-funcionarios">
+    <div class="funcionario-item">
+        <input type="number" name="quantidade[]" placeholder="Quantidade" min="1">
+        <input type="text" name="funcao[]" placeholder="Função">
+    </div>
+</div>
+
+<br>
+<button type="button" onclick="adicionarFuncionario()">Adicionar funcionário</button>
+<br><br>
 
     <label for="ocorrencias">Ocorrências:</label><br>
     <textarea id="ocorrencias" name="ocorrencias" rows="4" cols="60" placeholder="Descreva ocorrências do dia..."></textarea><br><br>
@@ -56,5 +66,21 @@
 
     <br>
     <a href="{{ url_for('logout') }}">Sair</a>
+    <script>
+function adicionarFuncionario() {
+    const lista = document.getElementById('lista-funcionarios');
+
+    const novaLinha = document.createElement('div');
+    novaLinha.className = 'funcionario-item';
+    novaLinha.style.marginTop = '10px';
+
+    novaLinha.innerHTML = `
+        <input type="number" name="quantidade[]" placeholder="Quantidade" min="1">
+        <input type="text" name="funcao[]" placeholder="Função">
+    `;
+
+    lista.appendChild(novaLinha);
+}
+</script>
 </body>
 </html>
