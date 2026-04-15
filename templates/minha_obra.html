@@ -26,8 +26,10 @@
 
     {% if registros %}
         {% for registro in registros %}
+        
             <div style="border:1px solid #ccc; padding:10px; margin-bottom:10px;">
                 <p><strong>Data:</strong> {{ registro.data_registro.strftime('%d/%m/%Y %H:%M') }}</p>
+                <p><strong>Usuário:</strong> {{ registro.usuario_id }}</p>
                 <p>{{ registro.descricao }}</p>
             </div>
         {% endfor %}
