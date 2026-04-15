@@ -15,31 +15,46 @@
 
     <h3>Nova atualização</h3>
     <form method="POST">
-    <textarea name="descricao" rows="5" cols="60" placeholder="Descreva a atualização da obra..." required></textarea>
-    <br><br>
+        <textarea name="descricao" rows="5" cols="60" placeholder="Descreva a atualização da obra..." required></textarea>
+        <br><br>
 
-    <label for="clima">Clima:</label><br>
-    <input type="text" id="clima" name="clima" placeholder="Ex: Ensolarado"><br><br>
+        <label for="clima">Clima:</label><br>
+        <input type="text" id="clima" name="clima" placeholder="Ex: Ensolarado">
+        <br><br>
 
-    <h3>Efetivo</h3>
+        <h3>Efetivo</h3>
 
-<div id="lista-funcionarios">
-    <div class="funcionario-item">
-    <input type="number" name="quantidade[]" placeholder="Quantidade" min="1">
-    <input type="text" name="funcao[]" placeholder="Função">
-    <button type="button" onclick="removerFuncionario(this)">X</button>
-    </div>
-</div>
+        <div id="lista-funcionarios">
+            <div class="funcionario-item">
+                <input type="number" name="quantidade[]" placeholder="Quantidade" min="1">
 
-<br>
-<button type="button" onclick="adicionarFuncionario()">Adicionar funcionário</button>
-<br><br>
+                <select name="funcao[]">
+                    <option value="">Selecione a função</option>
+                    <option value="Servente">Servente</option>
+                    <option value="Rasteleiro">Rasteleiro</option>
+                    <option value="Operador de rolo">Operador de rolo</option>
+                    <option value="Pedreiro">Pedreiro</option>
+                    <option value="Mestre de obras">Mestre de obras</option>
+                    <option value="Encarregado">Encarregado</option>
+                    <option value="Operador de vibroacabadora">Operador de vibroacabadora</option>
+                    <option value="Motorista">Motorista</option>
+                    <option value="Auxiliar">Auxiliar</option>
+                </select>
 
-    <label for="ocorrencias">Ocorrências:</label><br>
-    <textarea id="ocorrencias" name="ocorrencias" rows="4" cols="60" placeholder="Descreva ocorrências do dia..."></textarea><br><br>
+                <button type="button" onclick="removerFuncionario(this)">X</button>
+            </div>
+        </div>
 
-    <button type="submit">Salvar atualização</button>
-</form>
+        <br>
+        <button type="button" onclick="adicionarFuncionario()">Adicionar funcionário</button>
+        <br><br>
+
+        <label for="ocorrencias">Ocorrências:</label><br>
+        <textarea id="ocorrencias" name="ocorrencias" rows="4" cols="60" placeholder="Descreva ocorrências do dia..."></textarea>
+        <br><br>
+
+        <button type="submit">Salvar atualização</button>
+    </form>
 
     <hr>
 
@@ -47,7 +62,6 @@
 
     {% if registros %}
         {% for registro in registros %}
-        
             <div style="border:1px solid #ccc; padding:10px; margin-bottom:10px;">
                 <p><strong>Data:</strong> {{ registro.data_registro.strftime('%d/%m/%Y %H:%M') }}</p>
                 <p><strong>Usuário:</strong> {{ registro.usuario.username }}</p>
@@ -57,7 +71,7 @@
                 <p>{{ registro.descricao }}</p>
 
                 <form method="POST" action="{{ url_for('excluir_registro', id=registro.id) }}">
-                      <button type="submit" style="background:red; color:white;">Excluir</button>
+                    <button type="submit" style="background:red; color:white;">Excluir</button>
                 </form>
             </div>
         {% endfor %}
@@ -67,24 +81,40 @@
 
     <br>
     <a href="{{ url_for('logout') }}">Sair</a>
-    <div class="funcionario-item">
-    <input type="number" name="quantidade[]" placeholder="Quantidade" min="1">
 
-    <select name="funcao[]">
-        <option value="">Selecione a função</option>
-        <option value="Servente">Servente</option>
-        <option value="Rasteleiro">Rasteleiro</option>
-        <option value="Operador de rolo">Operador de rolo</option>
-        <option value="Pedreiro">Pedreiro</option>
-        <option value="Mestre de obras">Mestre de obras</option>
-        <option value="Encarregado">Encarregado</option>
-        <option value="Operador de vibroacabadora">Operador de vibroacabadora</option>
-        <option value="Motorista">Motorista</option>
-        <option value="Auxiliar">Auxiliar</option>
-    </select>
+    <script>
+    function adicionarFuncionario() {
+        const lista = document.getElementById('lista-funcionarios');
 
-    <button type="button" onclick="removerFuncionario(this)">X</button>
-</div>
-</script>
+        const novaLinha = document.createElement('div');
+        novaLinha.className = 'funcionario-item';
+        novaLinha.style.marginTop = '10px';
+
+        novaLinha.innerHTML = `
+            <input type="number" name="quantidade[]" placeholder="Quantidade" min="1">
+
+            <select name="funcao[]">
+                <option value="">Selecione a função</option>
+                <option value="Servente">Servente</option>
+                <option value="Rasteleiro">Rasteleiro</option>
+                <option value="Operador de rolo">Operador de rolo</option>
+                <option value="Pedreiro">Pedreiro</option>
+                <option value="Mestre de obras">Mestre de obras</option>
+                <option value="Encarregado">Encarregado</option>
+                <option value="Operador de vibroacabadora">Operador de vibroacabadora</option>
+                <option value="Motorista">Motorista</option>
+                <option value="Auxiliar">Auxiliar</option>
+            </select>
+
+            <button type="button" onclick="removerFuncionario(this)">X</button>
+        `;
+
+        lista.appendChild(novaLinha);
+    }
+
+    function removerFuncionario(botao) {
+        botao.parentElement.remove();
+    }
+    </script>
 </body>
 </html>
