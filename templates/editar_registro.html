@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editar Registro</title>
+</head>
+<body>
+    <h1>Editar Registro do Diário</h1>
+
+    <form method="POST">
+        <label for="descricao">Descrição:</label><br>
+        <textarea name="descricao" rows="5" cols="60" required>{{ registro.descricao }}</textarea>
+        <br><br>
+
+        <label for="clima">Clima:</label><br>
+        <input type="text" name="clima" value="{{ registro.clima or '' }}">
+        <br><br>
+
+        <label for="ocorrencias">Ocorrências:</label><br>
+        <textarea name="ocorrencias" rows="4" cols="60">{{ registro.ocorrencias or '' }}</textarea>
+        <br><br>
+
+        <h3>Efetivo</h3>
+        <div id="lista-funcionarios">
+            {% if efetivo_formatado %}
+                {% for item in efetivo_formatado %}
+                <div class="funcionario-item">
+                    <input type="number" name="quantidade[]" placeholder="Quantidade" value="{{ item.quantidade }}">
+                    <input type="text" name="funcao[]" placeholder="Função" value="{{ item.funcao }}">
+                    <button type="button" onclick="removerLinha(this)">Remover</button>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="funcionario-item">
+                    <input type="number" name="quantidade[]" placeholder="Quantidade">
+                    <input type="text" name="funcao[]" placeholder="Função">
+                    <button type="button" onclick="removerLinha(this)">Remover</button>
+                </div>
+            {% endif %}
+        </div>
+
+        <br>
+        <button type="button" onclick="adicionarLinha()">Adicionar funcionário</button>
+        <br><br>
+
+        <button type="submit">Salvar alterações</button>
+    </form>
+
+    <script>
+        function adicionarLinha() {
+            const div = document.createElement('div');
+            div.classList.add('funcionario-item');
+            div.innerHTML = `
+                <input type="number" name="quantidade[]" placeholder="Quantidade">
+                <input type="text" name="funcao[]" placeholder="Função">
+                <button type="button" onclick="removerLinha(this)">Remover</button>
+            `;
+            document.getElementById('lista-funcionarios').appendChild(div);
+        }
+
+        function removerLinha(botao) {
+            botao.parentElement.remove();
+        }
+    </script>
+</body>
+</html>

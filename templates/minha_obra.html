@@ -61,23 +61,30 @@
     <h3>Histórico de atualizações</h3>
 
     {% if registros %}
-        {% for registro in registros %}
-            <div style="border:1px solid #ccc; padding:10px; margin-bottom:10px;">
-                <p><strong>Data:</strong> {{ registro.data_registro.strftime('%d/%m/%Y %H:%M') }}</p>
-                <p><strong>Usuário:</strong> {{ registro.usuario.username }}</p>
-                <p><strong>Clima:</strong> {{ registro.clima or 'Não informado' }}</p>
-                <p><strong>Efetivo:</strong> {{ registro.efetivo or 'Não informado' }}</p>
-                <p><strong>Ocorrências:</strong> {{ registro.ocorrencias or 'Nenhuma' }}</p>
-                <p>{{ registro.descricao }}</p>
+    {% for registro in registros %}
+        <div style="border:1px solid #ccc; padding:10px; margin-bottom:10px;">
+            
+            <p><strong>Data:</strong> {{ registro.data_registro.strftime('%d/%m/%Y %H:%M') }}</p>
+            <p><strong>Usuário:</strong> {{ registro.usuario.username }}</p>
+            <p><strong>Clima:</strong> {{ registro.clima or 'Não informado' }}</p>
+            <p><strong>Efetivo:</strong> {{ registro.efetivo or 'Não informado' }}</p>
+            <p><strong>Ocorrências:</strong> {{ registro.ocorrencias or 'Nenhuma' }}</p>
+            <p>{{ registro.descricao }}</p>
+
+            <div style="display:flex; gap:10px; margin-top:10px;">
+                <a href="{{ url_for('editar_registro', id=registro.id) }}">
+                    <button type="button">Editar</button>
+                </a>
 
                 <form method="POST" action="{{ url_for('excluir_registro', id=registro.id) }}">
                     <button type="submit" style="background:red; color:white;">Excluir</button>
                 </form>
             </div>
-        {% endfor %}
-    {% else %}
-        <p>Nenhuma atualização registrada ainda.</p>
-    {% endif %}
+        </div>
+    {% endfor %}
+{% else %}
+    <p>Nenhuma atualização registrada ainda.</p>
+{% endif %}
 
     <br>
     <a href="{{ url_for('logout') }}">Sair</a>

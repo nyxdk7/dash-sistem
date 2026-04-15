@@ -311,6 +311,67 @@ def excluir_registro(id):
 
     return redirect(url_for('minha_obra'))
 
+@app.route('/editar-registro/<int:id>', methods=['GET', 'POST'])
+@login_required
+def editar_registro(id):
+    registro = DiarioObra.query.get_or_404(id)
+
+    # Permissão:
+    # admin pode editar qualquer registro
+    # engenheiro só pode editar o próprio registro
+    if session.get('nivel') != 'admin' and registro.usuario_id != session.get('user_id'):
+        return "Acesso negado"
+
+    if request.method == 'POST':
+        descricao = request.form.get('descricao', '').strip()
+        clima = request.form.get('clima', '').strip()
+        quantidades = request.form.getlist('quantidade[]')
+        funcoes = request.form.getlist('funcao[]')
+        ocorrencias = request.form.get('ocorrencias', '').strip()
+
+        efetivo_lista = []
+
+        for quantidade, funcao in zip(quantidades, funcoes):
+            quantidade = quantidade.strip()
+            funcao = funcao.strip()
+
+            if quantidade and funcao:
+                efetivo_lista.append(f"{quantidade} {funcao}")
+
+        efetivo = ", ".join(efetivo_lista) if efetivo_lista else None
+
+        if not descricao:
+            return "Preencha a descrição"
+
+        registro.descricao = descricao
+        registro.clima = clima if clima else None
+        registro.efetivo = efetivo
+        registro.ocorrencias = ocorrencias if ocorrencias else None
+
+        db.session.commit()
+
+        if session.get('nivel') == 'admin':
+            return redirect(url_for('dashboard'))
+        return redirect(url_for('minha_obra'))
+
+    efetivo_formatado = []
+    if registro.efetivo:
+        itens = registro.efetivo.split(',')
+        for item in itens:
+            item = item.strip()
+            partes = item.split(' ', 1)
+            if len(partes) == 2:
+                quantidade, funcao = partes
+                efetivo_formatado.append({
+                    'quantidade': quantidade,
+                    'funcao': funcao
+                })
+
+    return render_template(
+        'editar_registro.html',
+        registro=registro,
+        efetivo_formatado=efetivo_formatado
+    )
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
