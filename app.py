@@ -3,6 +3,7 @@ from functools import wraps
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 import urllib.parse
+from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = 'segredo123'
@@ -30,6 +31,13 @@ class Usuario(db.Model):
     nivel = db.Column(db.String(20), nullable=False, default='engenheiro')
     obra_id = db.Column(db.Integer, db.ForeignKey('obra.id'), nullable=True)
 
+class DiarioObra(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    descricao = db.Column(db.Text, nullable=False)
+    data_registro = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    obra_id = db.Column(db.Integer, db.ForeignKey('obra.id'), nullable=False)
 
 with app.app_context():
     db.create_all()
