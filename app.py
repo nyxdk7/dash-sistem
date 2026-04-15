@@ -4,6 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 import urllib.parse
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 app = Flask(__name__)
 app.secret_key = 'segredo123'
@@ -35,7 +36,11 @@ class Usuario(db.Model):
 class DiarioObra(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     descricao = db.Column(db.Text, nullable=False)
-    data_registro = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    data_registro = db.Column(
+    db.DateTime,
+    default=lambda: datetime.now(ZoneInfo("America/Rio_Branco")),
+    nullable=False
+)
 
     clima = db.Column(db.String(50), nullable=True)
     efetivo = db.Column(db.Text, nullable=True)
