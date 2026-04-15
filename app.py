@@ -14,12 +14,14 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
+
 class Obra(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), nullable=False)
     lote = db.Column(db.String(50), nullable=True)
 
     usuarios = db.relationship('Usuario', backref='obra', lazy=True)
+
 
 class Usuario(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -32,6 +34,7 @@ class Usuario(db.Model):
 with app.app_context():
     db.create_all()
 
+
 def login_required(f):
     @wraps(f)
     def wrap(*args, **kwargs):
@@ -39,6 +42,7 @@ def login_required(f):
             return redirect(url_for('home'))
         return f(*args, **kwargs)
     return wrap
+
 
 def nivel_required(nivel_permitido):
     def decorator(f):
@@ -50,9 +54,11 @@ def nivel_required(nivel_permitido):
         return wrap
     return decorator
 
+
 @app.route('/')
 def home():
     return render_template('index.html')
+
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -66,33 +72,57 @@ def login():
         session['user_id'] = user.id
         session['nivel'] = user.nivel
         session['obra_id'] = user.obra_id
-        return redirect(url_for('dashboard'))
-    else:
-        return "Login inválido"
+
+        if user.nivel == 'admin':
+            return redirect(url_for('dashboard'))
+        elif user.nivel == 'engenheiro':
+            return redirect(url_for('minha_obra'))
+        else:
+            session.clear()
+            return "Nível de usuário inválido"
+
+    return "Login inválido"
+
 
 @app.route('/dashboard')
 @login_required
 def dashboard():
+    if session.get('nivel') != 'admin':
+        return redirect(url_for('minha_obra'))
+
+    obras = Obra.query.all()
+    return render_template('dashboard.html', admin=True, obras=obras)
+
+
+@app.route('/minha-obra')
+@login_required
+def minha_obra():
     if session.get('nivel') == 'admin':
-        obras = Obra.query.all()
-        return render_template('dashboard.html', admin=True, obras=obras)
+        return redirect(url_for('dashboard'))
 
-    obra = None
-    if session.get('obra_id'):
-        obra = db.session.get(Obra, session['obra_id'])
+    obra_id = session.get('obra_id')
+    if not obra_id:
+        return "Você não está vinculado a nenhuma obra"
 
-    return render_template('dashboard.html', admin=False, obra=obra)
+    obra = db.session.get(Obra, obra_id)
+    if not obra:
+        return "Obra não encontrada"
+
+    return render_template('minha_obra.html', obra=obra)
+
 
 @app.route('/contratos')
 @login_required
 def contratos():
     return render_template('contratos.html')
 
+
 @app.route('/logout')
 @login_required
 def logout():
     session.clear()
     return redirect(url_for('home'))
+
 
 @app.route('/cadastro', methods=['GET', 'POST'])
 def cadastro():
@@ -121,7 +151,6 @@ def cadastro():
     return render_template('cadastro.html')
 
 
-
 @app.route('/admin')
 @login_required
 @nivel_required('admin')
@@ -129,7 +158,6 @@ def admin():
     usuarios = Usuario.query.all()
     obras = Obra.query.all()
     return render_template('admin.html', usuarios=usuarios, obras=obras)
-
 
 
 @app.route('/obra/nova', methods=['GET', 'POST'])
@@ -147,9 +175,10 @@ def nova_obra():
         db.session.add(obra)
         db.session.commit()
 
-        return "Obra cadastrada com sucesso"
+        return redirect(url_for('admin'))
 
     return render_template('nova_obra.html')
+
 
 @app.route('/admin/vincular-obra/<int:user_id>', methods=['POST'])
 @login_required
@@ -166,6 +195,7 @@ def vincular_obra(user_id):
     db.session.commit()
     return redirect(url_for('admin'))
 
+
 @app.route('/admin/alterar-nivel/<int:user_id>', methods=['POST'])
 @login_required
 @nivel_required('admin')
@@ -181,6 +211,7 @@ def alterar_nivel(user_id):
 
     return redirect(url_for('admin'))
 
+
 @app.route('/admin/excluir-usuario/<int:user_id>', methods=['POST'])
 @login_required
 @nivel_required('admin')
@@ -195,6 +226,7 @@ def excluir_usuario(user_id):
 
     return redirect(url_for('admin'))
 
+
 @app.route('/admin/excluir-obra/<int:obra_id>', methods=['POST'])
 @login_required
 @nivel_required('admin')
@@ -208,6 +240,7 @@ def excluir_obra(obra_id):
     db.session.commit()
 
     return redirect(url_for('admin'))
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
