@@ -39,6 +39,8 @@ class DiarioObra(db.Model):
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
     obra_id = db.Column(db.Integer, db.ForeignKey('obra.id'), nullable=False)
 
+    usuario = db.relationship('Usuario')
+
 with app.app_context():
     db.create_all()
 
