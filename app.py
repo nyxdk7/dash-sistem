@@ -40,6 +40,7 @@ class DiarioObra(db.Model):
     obra_id = db.Column(db.Integer, db.ForeignKey('obra.id'), nullable=False)
 
     usuario = db.relationship('Usuario')
+    obra = db.relationship('Obra')
 
 with app.app_context():
     db.create_all()
