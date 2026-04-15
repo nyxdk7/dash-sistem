@@ -15,10 +15,20 @@
 
     <h3>Nova atualização</h3>
     <form method="POST">
-        <textarea name="descricao" rows="5" cols="60" placeholder="Descreva a atualização da obra..." required></textarea>
-        <br><br>
-        <button type="submit">Salvar atualização</button>
-    </form>
+    <textarea name="descricao" rows="5" cols="60" placeholder="Descreva a atualização da obra..." required></textarea>
+    <br><br>
+
+    <label for="clima">Clima:</label><br>
+    <input type="text" id="clima" name="clima" placeholder="Ex: Ensolarado"><br><br>
+
+    <label for="efetivo">Efetivo:</label><br>
+    <input type="number" id="efetivo" name="efetivo" placeholder="Ex: 12"><br><br>
+
+    <label for="ocorrencias">Ocorrências:</label><br>
+    <textarea id="ocorrencias" name="ocorrencias" rows="4" cols="60" placeholder="Descreva ocorrências do dia..."></textarea><br><br>
+
+    <button type="submit">Salvar atualização</button>
+</form>
 
     <hr>
 
@@ -30,7 +40,14 @@
             <div style="border:1px solid #ccc; padding:10px; margin-bottom:10px;">
                 <p><strong>Data:</strong> {{ registro.data_registro.strftime('%d/%m/%Y %H:%M') }}</p>
                 <p><strong>Usuário:</strong> {{ registro.usuario.username }}</p>
+                <p><strong>Clima:</strong> {{ registro.clima or 'Não informado' }}</p>
+                <p><strong>Efetivo:</strong> {{ registro.efetivo or 'Não informado' }}</p>
+                <p><strong>Ocorrências:</strong> {{ registro.ocorrencias or 'Nenhuma' }}</p>
                 <p>{{ registro.descricao }}</p>
+
+                <form method="POST" action="{{ url_for('excluir_registro', id=registro.id) }}">
+                      <button type="submit" style="background:red; color:white;">Excluir</button>
+                </form>
             </div>
         {% endfor %}
     {% else %}

@@ -36,6 +36,10 @@ class DiarioObra(db.Model):
     descricao = db.Column(db.Text, nullable=False)
     data_registro = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
+    clima = db.Column(db.String(50), nullable=True)
+    efetivo = db.Column(db.Integer, nullable=True)
+    ocorrencias = db.Column(db.Text, nullable=True)
+
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
     obra_id = db.Column(db.Integer, db.ForeignKey('obra.id'), nullable=False)
 
@@ -123,12 +127,18 @@ def minha_obra():
 
     if request.method == 'POST':
         descricao = request.form.get('descricao')
+        clima = request.form.get('clima')
+        efetivo = request.form.get('efetivo')
+        ocorrencias = request.form.get('ocorrencias')
 
         if not descricao:
             return "Preencha a descrição"
 
         novo_registro = DiarioObra(
             descricao=descricao,
+            clima=clima,
+            efetivo=int(efetivo) if efetivo else None,
+            ocorrencias=ocorrencias,
             usuario_id=session.get('user_id'),
             obra_id=obra_id
         )
@@ -141,7 +151,6 @@ def minha_obra():
     registros = DiarioObra.query.filter_by(obra_id=obra_id).order_by(DiarioObra.data_registro.desc()).all()
 
     return render_template('minha_obra.html', obra=obra, registros=registros)
-
 
 @app.route('/contratos')
 @login_required
@@ -272,6 +281,19 @@ def excluir_obra(obra_id):
     db.session.commit()
 
     return redirect(url_for('admin'))
+
+@app.route('/excluir-registro/<int:id>', methods=['POST'])
+@login_required
+def excluir_registro(id):
+    registro = DiarioObra.query.get_or_404(id)
+
+    if session.get('nivel') != 'admin' and registro.usuario_id != session.get('user_id'):
+        return "Acesso negado"
+
+    db.session.delete(registro)
+    db.session.commit()
+
+    return redirect(url_for('minha_obra'))
 
 
 if __name__ == '__main__':
