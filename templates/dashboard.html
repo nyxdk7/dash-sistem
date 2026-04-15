@@ -19,17 +19,6 @@
     <div class="inicio-login">
         <h1>PAINEL DO ADMINISTRADOR</h1>
 
-        <h2>OBRAS / LOTES</h2>
-        {% if obras %}
-            <ul>
-                {% for obra in obras %}
-                    <li>{{ obra.nome }} - Lote {{ obra.lote }}</li>
-                {% endfor %}
-            </ul>
-        {% else %}
-            <p>Nenhuma obra cadastrada.</p>
-        {% endif %}
-
         <h2>Últimas atualizações</h2>
         {% if registros %}
             {% for registro in registros %}
