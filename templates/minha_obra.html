@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minha Obra</title>
+</head>
+<body>
+    <h1>Minha Obra</h1>
+
+    <h2>{{ obra.nome }}</h2>
+    <p><strong>Lote:</strong> {{ obra.lote }}</p>
+
+    <hr>
+
+    <h3>Nova atualização</h3>
+    <form method="POST">
+        <textarea name="descricao" rows="5" cols="60" placeholder="Descreva a atualização da obra..." required></textarea>
+        <br><br>
+        <button type="submit">Salvar atualização</button>
+    </form>
+
+    <hr>
+
+    <h3>Histórico de atualizações</h3>
+
+    {% if registros %}
+        {% for registro in registros %}
+            <div style="border:1px solid #ccc; padding:10px; margin-bottom:10px;">
+                <p><strong>Data:</strong> {{ registro.data_registro.strftime('%d/%m/%Y %H:%M') }}</p>
+                <p>{{ registro.descricao }}</p>
+            </div>
+        {% endfor %}
+    {% else %}
+        <p>Nenhuma atualização registrada ainda.</p>
+    {% endif %}
+
+    <br>
+    <a href="{{ url_for('logout') }}">Sair</a>
+</body>
+</html>
