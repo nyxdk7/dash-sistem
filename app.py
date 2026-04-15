@@ -102,7 +102,7 @@ def dashboard():
     return render_template('dashboard.html', admin=True, obras=obras)
 
 
-@app.route('/minha-obra')
+@app.route('/minha-obra', methods=['GET', 'POST'])
 @login_required
 def minha_obra():
     if session.get('nivel') == 'admin':
@@ -116,7 +116,26 @@ def minha_obra():
     if not obra:
         return "Obra não encontrada"
 
-    return render_template('minha_obra.html', obra=obra)
+    if request.method == 'POST':
+        descricao = request.form.get('descricao')
+
+        if not descricao:
+            return "Preencha a descrição"
+
+        novo_registro = DiarioObra(
+            descricao=descricao,
+            usuario_id=session.get('user_id'),
+            obra_id=obra_id
+        )
+
+        db.session.add(novo_registro)
+        db.session.commit()
+
+        return redirect(url_for('minha_obra'))
+
+    registros = DiarioObra.query.filter_by(obra_id=obra_id).order_by(DiarioObra.data_registro.desc()).all()
+
+    return render_template('minha_obra.html', obra=obra, registros=registros)
 
 
 @app.route('/contratos')
