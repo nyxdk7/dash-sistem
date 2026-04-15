@@ -37,7 +37,7 @@ class DiarioObra(db.Model):
     data_registro = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     clima = db.Column(db.String(50), nullable=True)
-    efetivo = db.Column(db.Integer, nullable=True)
+    efetivo = db.Column(db.Text, nullable=True)
     ocorrencias = db.Column(db.Text, nullable=True)
 
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
@@ -137,7 +137,7 @@ def minha_obra():
         novo_registro = DiarioObra(
             descricao=descricao,
             clima=clima,
-            efetivo=int(efetivo) if efetivo else None,
+            efetivo=efetivo,
             ocorrencias=ocorrencias,
             usuario_id=session.get('user_id'),
             obra_id=obra_id
