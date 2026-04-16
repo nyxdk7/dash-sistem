@@ -542,7 +542,7 @@ def importacoes():
     )
 
 
-@app.route('/medicao-consolidada')
+@app.route('/medicao-consolidada', methods=['GET', 'POST'])
 @login_required
 def medicao_consolidada():
     return redirect(url_for('importacoes'))
