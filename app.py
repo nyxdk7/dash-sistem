@@ -425,35 +425,46 @@ def importacoes():
     dados = None
     nome_arquivo = None
     cabecalho = None
-    total_itens = None
+    total_itens = 0
+    obras = Obra.query.all()
+    abas = []  # <-- CORREÇÃO AQUI
 
     if request.method == 'POST':
         arquivo = request.files.get('arquivo')
 
-        if arquivo and arquivo.filename:
-            nome_arquivo = arquivo.filename
+        if not arquivo or not arquivo.filename:
+            flash('Selecione um arquivo .xlsx para importar.', 'warning')
+        else:
+            nome_arquivo = secure_filename(arquivo.filename)
 
-            try:
-                if arquivo.filename.endswith('.xlsx'):
+            if not arquivo_xlsx_valido(nome_arquivo):
+                flash('Apenas arquivos .xlsx são suportados.', 'danger')
+            else:
+                try:
                     cabecalho, itens = extrair_medicao(arquivo)
+                    cabecalho = cabecalho or {}
                     dados = itens
                     total_itens = len(itens)
-                else:
-                    return "Apenas .xlsx suportado"
 
-            except Exception as e:
-                return f"Erro ao processar planilha: {str(e)}"
+                    # 👇 cria lista de abas baseada nos itens
+                    abas = list(set([item.get('aba') for item in itens if item.get('aba')]))
 
-    # 🔥 buscar obras
-    obras = Obra.query.all()
+                    if total_itens == 0:
+                        flash('Nenhum item válido encontrado na planilha.', 'warning')
+                    else:
+                        flash(
+                            f'Planilha "{nome_arquivo}" lida com sucesso. {total_itens} itens encontrados.',
+                            'success'
+                        )
+
+                except Exception as e:
+                    flash(f'Erro ao processar planilha: {str(e)}', 'danger')
 
     return render_template(
         'importacoes.html',
-        dados=dados,
+        abas=abas,
         nome_arquivo=nome_arquivo,
-        cabecalho=cabecalho,
-        total_itens=total_itens,
-        obras=obras  # 👈 faltava isso
+        obras=obras
     )
 
 @app.route('/salvar-medicao', methods=['POST'])
