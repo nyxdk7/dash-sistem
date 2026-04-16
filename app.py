@@ -396,7 +396,7 @@ def importacoes():
             try:
                 if arquivo.filename.endswith('.xlsx'):
                     itens = extrair_medicao(arquivo)
-                    dados = itens[:20]
+                    dados = itens
                 else:
                     return "Apenas .xlsx suportado por enquanto"
 
