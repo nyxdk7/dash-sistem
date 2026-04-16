@@ -6,12 +6,9 @@ from werkzeug.utils import secure_filename
 import urllib.parse
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from flask import render_template, request, flash
-from werkzeug.utils import secure_filename
-from importador_medicao import extrair_medicao
-from flask import redirect
 
-from services.importador_medicao import extrair_medicao
+from importador_medicao import extrair_medicao
+
 
 app = Flask(__name__)
 app.secret_key = 'segredo123'
@@ -27,7 +24,6 @@ db = SQLAlchemy(app)
 
 def agora_br():
     return datetime.now(ZoneInfo("America/Sao_Paulo"))
-
 
 def arquivo_xlsx_valido(nome_arquivo):
     return bool(nome_arquivo) and nome_arquivo.lower().endswith('.xlsx')
@@ -50,9 +46,6 @@ def to_float(valor, padrao=0.0):
         return float(texto)
     except ValueError:
         return padrao
-    
-def arquivo_xlsx_valido(nome_arquivo):
-    return nome_arquivo.lower().endswith(".xlsx")
 
 
 class Obra(db.Model):
@@ -159,29 +152,6 @@ def nivel_required(nivel_permitido):
     return decorator
 
 
-def ler_planilha_bruta(arquivo):
-    import openpyxl
-
-    wb = openpyxl.load_workbook(arquivo, data_only=True)
-    abas = []
-
-    for ws in wb.worksheets:
-        dados = []
-
-        for row in ws.iter_rows(values_only=True):
-            linha = []
-            for cell in row:
-                linha.append(str(cell) if cell is not None else '')
-            dados.append(linha)
-
-        abas.append({
-            "nome": ws.title,
-            "linhas": dados
-        })
-
-    return abas
-
-
 @app.route('/')
 def home():
     return render_template('index.html')
@@ -202,6 +172,7 @@ def login():
 
         if user.nivel == 'admin':
             return redirect(url_for('dashboard'))
+
         if user.nivel == 'engenheiro':
             return redirect(url_for('minha_obra'))
 
@@ -433,6 +404,7 @@ def excluir_registro(id):
 
     if session.get('nivel') == 'admin':
         return redirect(url_for('dashboard'))
+
     return redirect(url_for('minha_obra'))
 
 
@@ -474,6 +446,7 @@ def editar_registro(id):
 
         if session.get('nivel') == 'admin':
             return redirect(url_for('dashboard'))
+
         return redirect(url_for('minha_obra'))
 
     efetivo_formatado = []
@@ -498,17 +471,98 @@ def editar_registro(id):
         efetivo_formatado=efetivo_formatado
     )
 
-@app.route('/importacoes')
-def importacoes_redirect():
-    return redirect('/medicao-consolidada')
+
+@app.route('/importacoes', methods=['GET', 'POST'])
+@login_required
+def importacoes():
+    dados = []
+    nome_arquivo = None
+    cabecalho = {}
+    total_itens = 0
+    obras = Obra.query.all()
+    abas = []
+    abas_dados = {}
+    aba_ativa = None
+
+    if request.method == 'POST':
+        arquivo = request.files.get('arquivo')
+
+        if not arquivo or not arquivo.filename:
+            flash('Selecione um arquivo .xlsx para importar.', 'warning')
+            return render_template(
+                'importacoes.html',
+                dados=dados,
+                nome_arquivo=nome_arquivo,
+                cabecalho=cabecalho,
+                total_itens=total_itens,
+                obras=obras,
+                abas=abas,
+                abas_dados=abas_dados,
+                aba_ativa=aba_ativa
+            )
+
+        nome_arquivo = secure_filename(arquivo.filename)
+
+        if not arquivo_xlsx_valido(nome_arquivo):
+            flash('Apenas arquivos .xlsx são suportados.', 'danger')
+        else:
+            try:
+                cabecalho, itens = extrair_medicao(arquivo)
+                cabecalho = cabecalho or {}
+                dados = itens or []
+                total_itens = len(dados)
+
+                for item in dados:
+                    nome_aba = str(item.get('aba') or 'Sem aba').strip()
+                    if nome_aba not in abas_dados:
+                        abas_dados[nome_aba] = []
+                    abas_dados[nome_aba].append(item)
+
+                abas = list(abas_dados.keys())
+                aba_ativa = abas[0] if abas else None
+
+                if total_itens == 0:
+                    flash('Nenhum item válido encontrado na planilha.', 'warning')
+                else:
+                    flash(f'Planilha carregada com sucesso. {total_itens} itens encontrados.', 'success')
+
+            except Exception as e:
+                flash(f'Erro ao processar a planilha: {str(e)}', 'danger')
+
+    return render_template(
+        'importacoes.html',
+        dados=dados,
+        nome_arquivo=nome_arquivo,
+        cabecalho=cabecalho,
+        total_itens=total_itens,
+        obras=obras,
+        abas=abas,
+        abas_dados=abas_dados,
+        aba_ativa=aba_ativa
+    )
+
+
+@app.route('/medicao-consolidada')
+@login_required
+def medicao_consolidada():
+    return redirect(url_for('importacoes'))
+
 
 @app.route('/salvar-medicao', methods=['POST'])
 @login_required
 def salvar_medicao():
+    obra_id = request.form.get('obra_id')
     arquivo = request.files.get('arquivo')
 
+    if not obra_id and session.get('nivel') == 'engenheiro':
+        obra_id = session.get('obra_id')
+
+    if not obra_id:
+        flash('Selecione uma obra.', 'warning')
+        return redirect(url_for('importacoes'))
+
     if not arquivo or not arquivo.filename:
-        flash('Nenhum arquivo enviado.', 'danger')
+        flash('Selecione novamente a planilha antes de salvar.', 'warning')
         return redirect(url_for('importacoes'))
 
     nome_arquivo = secure_filename(arquivo.filename)
@@ -525,20 +579,9 @@ def salvar_medicao():
             flash('Nenhum item válido foi encontrado na planilha.', 'warning')
             return redirect(url_for('importacoes'))
 
-        obra_id = request.form.get('obra_id')
-
-        if not obra_id and session.get('nivel') == 'engenheiro':
-            obra_id = session.get('obra_id')
-
-        if not obra_id:
-            flash('Selecione uma obra.', 'warning')
-            return redirect(url_for('importacoes'))
-
-        obra_id = int(obra_id)
-
         nova_medicao = Medicao(
             nome_arquivo=nome_arquivo,
-            obra_id=obra_id,
+            obra_id=int(obra_id),
             usuario_id=session.get('user_id'),
             processo=cabecalho.get('processo'),
             contrato=cabecalho.get('contrato'),
@@ -634,100 +677,6 @@ def ver_medicao(id):
         itens=itens
     )
 
-from flask import redirect, request, render_template, flash
-from werkzeug.utils import secure_filename
-
-@app.route('/medicao-consolidada', methods=['GET', 'POST'])
-@login_required
-def medicao_consolidada():
-    cabecalho = None
-    itens = []
-    resumo = None
-    grupos_dashboard = []
-    top_itens_atual = []
-    nome_arquivo = None
-
-    if request.method == 'POST':
-
-        # 🔴 garante que o botão foi clicado
-        if 'enviar' not in request.form:
-            flash('Erro no envio do formulário.', 'danger')
-            return redirect(request.url)
-
-        # 🔴 garante que o arquivo chegou
-        if 'arquivo' not in request.files:
-            flash('Arquivo não chegou no servidor.', 'danger')
-            return redirect(request.url)
-
-        arquivo = request.files['arquivo']
-
-        # 🔴 garante que não veio vazio
-        if arquivo.filename == '':
-            flash('Nenhum arquivo selecionado.', 'warning')
-            return redirect(request.url)
-
-        nome_arquivo = secure_filename(arquivo.filename)
-
-        if not arquivo_xlsx_valido(nome_arquivo):
-            flash('Apenas arquivos .xlsx são suportados.', 'danger')
-        else:
-            try:
-                cabecalho, itens = extrair_medicao_consolidada(arquivo)
-
-                resumo = {
-                    'total_itens': len(itens),
-                    'total_financeiro_acumulado_anterior': sum(float(item.get('financeiro_acumulado_anterior', 0) or 0) for item in itens),
-                    'total_financeiro_liquido_atual': sum(float(item.get('financeiro_liquido_atual', 0) or 0) for item in itens),
-                    'total_financeiro_acumulado_atual': sum(float(item.get('financeiro_acumulado_atual', 0) or 0) for item in itens),
-                    'total_saldo_financeiro': sum(float(item.get('saldo_financeiro', 0) or 0) for item in itens),
-                    'pi_mais_reajuste': 0
-                }
-
-                grupos = {}
-                for item in itens:
-                    grupo = item.get('grupo') or 'SEM_GRUPO'
-                    if grupo not in grupos:
-                        grupos[grupo] = {
-                            'grupo': grupo,
-                            'quantidade_itens': 0,
-                            'contrato_financeiro': 0,
-                            'financeiro_liquido_atual': 0,
-                            'financeiro_acumulado_atual': 0,
-                            'saldo_financeiro': 0
-                        }
-
-                    grupos[grupo]['quantidade_itens'] += 1
-                    grupos[grupo]['contrato_financeiro'] += float(item.get('contrato_financeiro', 0) or 0)
-                    grupos[grupo]['financeiro_liquido_atual'] += float(item.get('financeiro_liquido_atual', 0) or 0)
-                    grupos[grupo]['financeiro_acumulado_atual'] += float(item.get('financeiro_acumulado_atual', 0) or 0)
-                    grupos[grupo]['saldo_financeiro'] += float(item.get('saldo_financeiro', 0) or 0)
-
-                grupos_dashboard = sorted(
-                    grupos.values(),
-                    key=lambda g: g['financeiro_liquido_atual'],
-                    reverse=True
-                )
-
-                top_itens_atual = sorted(
-                    itens,
-                    key=lambda i: float(i.get('financeiro_liquido_atual', 0) or 0),
-                    reverse=True
-                )[:10]
-
-                flash('Aba MEDIÇÃO CONSOLIDADA carregada com sucesso.', 'success')
-
-            except Exception as e:
-                flash(f'Erro ao ler a aba MEDIÇÃO CONSOLIDADA: {e}', 'danger')
-
-    return render_template(
-        'medicao_consolidada.html',
-        cabecalho=cabecalho,
-        itens=itens,
-        resumo=resumo,
-        grupos_dashboard=grupos_dashboard,
-        top_itens_atual=top_itens_atual,
-        nome_arquivo=nome_arquivo
-    )
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

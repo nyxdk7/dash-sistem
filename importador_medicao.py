@@ -10,14 +10,35 @@ def texto(v):
 def numero(v, padrao=0.0):
     if v is None or v == "":
         return padrao
-    try:
+
+    if isinstance(v, (int, float)):
         return float(v)
+
+    texto_valor = str(v).strip()
+    texto_valor = texto_valor.replace("R$", "").replace(" ", "")
+
+    if "," in texto_valor:
+        texto_valor = texto_valor.replace(".", "").replace(",", ".")
+
+    try:
+        return float(texto_valor)
     except (TypeError, ValueError):
         return padrao
 
 
 def nome_aba_normalizado(nome):
-    return str(nome).strip().lower().replace("ç", "c").replace("ã", "a").replace("á", "a")
+    return (
+        str(nome)
+        .strip()
+        .lower()
+        .replace("ç", "c")
+        .replace("ã", "a")
+        .replace("á", "a")
+        .replace("é", "e")
+        .replace("í", "i")
+        .replace("ó", "o")
+        .replace("ú", "u")
+    )
 
 
 def extrair_medicao_consolidada(arquivo):
@@ -47,39 +68,35 @@ def extrair_medicao_consolidada(arquivo):
 
     itens = []
 
-    # A planilha real termina os itens antes da linha 311 (que é total geral)
     for linha in range(23, 311):
-        codigo_a = texto(ws.cell(linha, 1).value)   # coluna A
-        codigo_b = texto(ws.cell(linha, 2).value)   # coluna B
-        descricao = texto(ws.cell(linha, 3).value)  # coluna C
-        unidade = texto(ws.cell(linha, 4).value)    # coluna D
+        codigo_a = texto(ws.cell(linha, 1).value)
+        codigo_b = texto(ws.cell(linha, 2).value)
+        descricao = texto(ws.cell(linha, 3).value)
+        unidade = texto(ws.cell(linha, 4).value)
 
-        contrato_qtd = ws.cell(linha, 5).value      # E
-        contrato_fin = ws.cell(linha, 6).value      # F
+        contrato_qtd = ws.cell(linha, 5).value
+        contrato_fin = ws.cell(linha, 6).value
 
-        qtd_acum_ant = ws.cell(linha, 18).value     # R
-        qtd_liq_atual = ws.cell(linha, 19).value    # S
-        qtd_acum_atual = ws.cell(linha, 20).value   # T
+        qtd_acum_ant = ws.cell(linha, 18).value
+        qtd_liq_atual = ws.cell(linha, 19).value
+        qtd_acum_atual = ws.cell(linha, 20).value
 
-        preco_unit = ws.cell(linha, 21).value       # U
+        preco_unit = ws.cell(linha, 21).value
 
-        fin_acum_ant = ws.cell(linha, 27).value     # AA
-        fin_liq_atual = ws.cell(linha, 28).value    # AB
-        perc_reajuste = ws.cell(linha, 29).value    # AC
-        valor_reajuste = ws.cell(linha, 30).value   # AD
-        fin_acum_atual = ws.cell(linha, 31).value   # AE
+        fin_acum_ant = ws.cell(linha, 27).value
+        fin_liq_atual = ws.cell(linha, 28).value
+        perc_reajuste = ws.cell(linha, 29).value
+        valor_reajuste = ws.cell(linha, 30).value
+        fin_acum_atual = ws.cell(linha, 31).value
 
-        saldo_qtd = ws.cell(linha, 32).value        # AF
-        saldo_fin = ws.cell(linha, 33).value        # AG
-        exec_percent = ws.cell(linha, 34).value     # AH
+        saldo_qtd = ws.cell(linha, 32).value
+        saldo_fin = ws.cell(linha, 33).value
+        exec_percent = ws.cell(linha, 34).value
 
-        # Corrige linhas quebradas como a 273, onde A veio "'" e o identificador útil está em B
         codigo = codigo_a
         if codigo in (None, "", "'"):
             codigo = codigo_b
 
-        # Ignora linhas de grupo/seção
-        # Ex.: "Transportes", "REPARO PROFUNDO", títulos de bloco etc.
         if not descricao:
             continue
 
@@ -125,7 +142,6 @@ def extrair_medicao_consolidada(arquivo):
             "percentual_execucao": numero(exec_percent),
         })
 
-    # Totais oficiais da própria planilha
     resumo = {
         "total_itens": len(itens),
         "total_preco_unitario": numero(ws["U311"].value),
@@ -138,7 +154,6 @@ def extrair_medicao_consolidada(arquivo):
         "pi_mais_reajuste": numero(ws["J318"].value),
     }
 
-    # Se as células J316:J318 vierem como texto/valor deslocado, corrige lendo coluna J/K
     if resumo["pi"] == 0:
         resumo["pi"] = numero(ws["K316"].value)
     if resumo["reajuste_total"] == 0:
@@ -146,7 +161,6 @@ def extrair_medicao_consolidada(arquivo):
     if resumo["pi_mais_reajuste"] == 0:
         resumo["pi_mais_reajuste"] = numero(ws["K318"].value)
 
-    # Dashboard por grupo
     grupos = {}
     for item in itens:
         chave = item["grupo"] or "SEM_GRUPO"
@@ -179,3 +193,43 @@ def extrair_medicao_consolidada(arquivo):
     )[:10]
 
     return cabecalho, itens, resumo, grupos_dashboard, top_itens_atual
+
+
+def extrair_medicao(arquivo):
+    cabecalho, itens_originais, resumo, grupos_dashboard, top_itens_atual = extrair_medicao_consolidada(arquivo)
+
+    itens_convertidos = []
+
+    for item in itens_originais:
+        itens_convertidos.append({
+            "aba": cabecalho.get("aba_lida", "MEDIÇÃO CONSOLIDADA"),
+            "tipo_aba": "medicao_consolidada",
+            "tipo": "medicao_consolidada",
+            "codigo": item.get("codigo"),
+            "descricao": item.get("item"),
+            "unidade": item.get("unidade"),
+            "quantidade": item.get("quantidade_liquida_atual"),
+            "preco_unitario": item.get("preco_unitario"),
+            "preco_total": item.get("financeiro_liquido_atual"),
+            "total": item.get("financeiro_liquido_atual"),
+            "marca": None,
+            "observacao": (
+                f"Grupo: {item.get('grupo') or ''} | "
+                f"Qtd contrato: {item.get('contrato_quantidade', 0)} | "
+                f"Fin. acumulado atual: {item.get('financeiro_acumulado_atual', 0)} | "
+                f"Saldo financeiro: {item.get('saldo_financeiro', 0)}"
+            )
+        })
+
+    cabecalho_convertido = {
+        **cabecalho,
+        "total_itens": resumo.get("total_itens"),
+        "total_financeiro_liquido_atual": resumo.get("total_financeiro_liquido_atual"),
+        "total_financeiro_acumulado_atual": resumo.get("total_financeiro_acumulado_atual"),
+        "total_saldo_financeiro": resumo.get("total_saldo_financeiro"),
+        "pi": resumo.get("pi"),
+        "reajuste_total": resumo.get("reajuste_total"),
+        "pi_mais_reajuste": resumo.get("pi_mais_reajuste"),
+    }
+
+    return cabecalho_convertido, itens_convertidos
