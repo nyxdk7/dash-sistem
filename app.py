@@ -709,13 +709,7 @@ def medicao_consolidada():
     nome_arquivo = None
 
     if request.method == 'POST':
-        print("DEBUG method:", request.method)
-        print("DEBUG files keys:", list(request.files.keys()))
-
         arquivo = request.files.get('arquivo')
-
-        print("DEBUG arquivo:", arquivo)
-        print("DEBUG arquivo.filename:", arquivo.filename if arquivo else None)
 
         if not arquivo or not arquivo.filename:
             flash('Selecione um arquivo .xlsx.', 'warning')
@@ -726,8 +720,50 @@ def medicao_consolidada():
                 flash('Apenas arquivos .xlsx são suportados.', 'danger')
             else:
                 try:
-                    cabecalho, itens, resumo, grupos_dashboard, top_itens_atual = extrair_medicao_consolidada(arquivo)
+                    cabecalho, itens = extrair_medicao_consolidada(arquivo)
+
+                    resumo = {
+                        'total_itens': len(itens),
+                        'total_financeiro_acumulado_anterior': sum(float(item.get('financeiro_acumulado_anterior', 0) or 0) for item in itens),
+                        'total_financeiro_liquido_atual': sum(float(item.get('financeiro_liquido_atual', 0) or 0) for item in itens),
+                        'total_financeiro_acumulado_atual': sum(float(item.get('financeiro_acumulado_atual', 0) or 0) for item in itens),
+                        'total_saldo_financeiro': sum(float(item.get('saldo_financeiro', 0) or 0) for item in itens),
+                        'pi_mais_reajuste': 0
+                    }
+
+                    grupos = {}
+                    for item in itens:
+                        grupo = item.get('grupo') or 'SEM_GRUPO'
+                        if grupo not in grupos:
+                            grupos[grupo] = {
+                                'grupo': grupo,
+                                'quantidade_itens': 0,
+                                'contrato_financeiro': 0,
+                                'financeiro_liquido_atual': 0,
+                                'financeiro_acumulado_atual': 0,
+                                'saldo_financeiro': 0
+                            }
+
+                        grupos[grupo]['quantidade_itens'] += 1
+                        grupos[grupo]['contrato_financeiro'] += float(item.get('contrato_financeiro', 0) or 0)
+                        grupos[grupo]['financeiro_liquido_atual'] += float(item.get('financeiro_liquido_atual', 0) or 0)
+                        grupos[grupo]['financeiro_acumulado_atual'] += float(item.get('financeiro_acumulado_atual', 0) or 0)
+                        grupos[grupo]['saldo_financeiro'] += float(item.get('saldo_financeiro', 0) or 0)
+
+                    grupos_dashboard = sorted(
+                        grupos.values(),
+                        key=lambda g: g['financeiro_liquido_atual'],
+                        reverse=True
+                    )
+
+                    top_itens_atual = sorted(
+                        itens,
+                        key=lambda i: float(i.get('financeiro_liquido_atual', 0) or 0),
+                        reverse=True
+                    )[:10]
+
                     flash('Aba MEDIÇÃO CONSOLIDADA carregada com sucesso.', 'success')
+
                 except Exception as e:
                     flash(f'Erro ao ler a aba MEDIÇÃO CONSOLIDADA: {e}', 'danger')
 
