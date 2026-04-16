@@ -394,11 +394,14 @@ def importacoes():
 
             try:
                 if arquivo.filename.endswith('.xlsx'):
-                    df = pd.read_excel(arquivo)
+                    df = pd.read_excel(arquivo, header=11)
                 elif arquivo.filename.endswith('.csv'):
                     df = pd.read_csv(arquivo)
                 else:
                     return "Formato não suportado"
+
+                # remove colunas vazias/sem nome
+                df = df.loc[:, ~df.columns.astype(str).str.contains('^Unnamed')]
 
                 # remove linhas totalmente vazias
                 df.dropna(how='all', inplace=True)
