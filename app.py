@@ -6,6 +6,9 @@ from werkzeug.utils import secure_filename
 import urllib.parse
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from flask import render_template, request, flash
+from werkzeug.utils import secure_filename
+from services.importador_medicao import extrair_medicao_consolidad
 
 from services.importador_medicao import extrair_medicao
 
@@ -46,6 +49,9 @@ def to_float(valor, padrao=0.0):
         return float(texto)
     except ValueError:
         return padrao
+    
+def arquivo_xlsx_valido(nome_arquivo):
+    return nome_arquivo.lower().endswith(".xlsx")
 
 
 class Obra(db.Model):
@@ -692,6 +698,42 @@ def ver_medicao(id):
         itens=itens
     )
 
+@app.route('/medicao-consolidada', methods=['GET', 'POST'])
+@login_required
+def medicao_consolidada():
+    cabecalho = None
+    itens = []
+    resumo = None
+    grupos_dashboard = []
+    top_itens_atual = []
+    nome_arquivo = None
+
+    if request.method == 'POST':
+        arquivo = request.files.get('arquivo')
+
+        if not arquivo or not arquivo.filename:
+            flash('Selecione um arquivo .xlsx.', 'warning')
+        else:
+            nome_arquivo = secure_filename(arquivo.filename)
+
+            if not arquivo_xlsx_valido(nome_arquivo):
+                flash('Apenas arquivos .xlsx são suportados.', 'danger')
+            else:
+                try:
+                    cabecalho, itens, resumo, grupos_dashboard, top_itens_atual = extrair_medicao_consolidada(arquivo)
+                    flash('Aba MEDIÇÃO CONSOLIDADA carregada com sucesso.', 'success')
+                except Exception as e:
+                    flash(f'Erro ao ler a aba MEDIÇÃO CONSOLIDADA: {e}', 'danger')
+
+    return render_template(
+        'medicao_consolidada.html',
+        cabecalho=cabecalho,
+        itens=itens,
+        resumo=resumo,
+        grupos_dashboard=grupos_dashboard,
+        top_itens_atual=top_itens_atual,
+        nome_arquivo=nome_arquivo
+    )
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

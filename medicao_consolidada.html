@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Medição Consolidada</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f6fa;
+        }
+
+        h1, h2, h3 {
+            color: #1f2937;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin: 20px 0;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        .card h3 {
+            margin: 0 0 8px 0;
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        .card p {
+            margin: 0;
+            font-size: 24px;
+            font-weight: bold;
+            color: #111827;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            margin-top: 16px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        th, td {
+            border-bottom: 1px solid #e5e7eb;
+            padding: 10px;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        th {
+            background: #1f2937;
+            color: white;
+        }
+
+        .upload-box {
+            background: white;
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Medição Consolidada</h1>
+
+    <div class="upload-box">
+        <form method="POST" enctype="multipart/form-data">
+            <input type="file" name="arquivo" accept=".xlsx" required>
+            <button type="submit">Carregar planilha</button>
+        </form>
+    </div>
+
+    {% if cabecalho %}
+        <h2>Dados da planilha</h2>
+        <p><strong>Arquivo:</strong> {{ nome_arquivo }}</p>
+        <p><strong>Aba lida:</strong> {{ cabecalho.aba_lida }}</p>
+        <p><strong>Processo:</strong> {{ cabecalho.processo }}</p>
+        <p><strong>Rodovia:</strong> {{ cabecalho.rodovia }}</p>
+        <p><strong>Trecho:</strong> {{ cabecalho.trecho }}</p>
+        <p><strong>Sub-trecho:</strong> {{ cabecalho.sub_trecho }}</p>
+        <p><strong>Segmento:</strong> {{ cabecalho.segmento }}</p>
+        <p><strong>Extensão:</strong> {{ cabecalho.extensao }}</p>
+    {% endif %}
+
+    {% if resumo %}
+        <div class="cards">
+            <div class="card">
+                <h3>Total de itens</h3>
+                <p>{{ resumo.total_itens }}</p>
+            </div>
+            <div class="card">
+                <h3>Financeiro acumulado anterior</h3>
+                <p>R$ {{ "{:,.2f}".format(resumo.total_financeiro_acumulado_anterior).replace(",", "X").replace(".", ",").replace("X", ".") }}</p>
+            </div>
+            <div class="card">
+                <h3>Financeiro líquido atual</h3>
+                <p>R$ {{ "{:,.2f}".format(resumo.total_financeiro_liquido_atual).replace(",", "X").replace(".", ",").replace("X", ".") }}</p>
+            </div>
+            <div class="card">
+                <h3>Financeiro acumulado atual</h3>
+                <p>R$ {{ "{:,.2f}".format(resumo.total_financeiro_acumulado_atual).replace(",", "X").replace(".", ",").replace("X", ".") }}</p>
+            </div>
+            <div class="card">
+                <h3>Saldo financeiro</h3>
+                <p>R$ {{ "{:,.2f}".format(resumo.total_saldo_financeiro).replace(",", "X").replace(".", ",").replace("X", ".") }}</p>
+            </div>
+            <div class="card">
+                <h3>PI + Reajuste</h3>
+                <p>R$ {{ "{:,.2f}".format(resumo.pi_mais_reajuste).replace(",", "X").replace(".", ",").replace("X", ".") }}</p>
+            </div>
+        </div>
+
+        <h2>Resumo por grupo</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Grupo</th>
+                    <th>Qtd. itens</th>
+                    <th>Contrato financeiro</th>
+                    <th>Financeiro líquido atual</th>
+                    <th>Financeiro acumulado atual</th>
+                    <th>Saldo financeiro</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for grupo in grupos_dashboard %}
+                <tr>
+                    <td>{{ grupo.grupo }}</td>
+                    <td>{{ grupo.quantidade_itens }}</td>
+                    <td>R$ {{ "{:,.2f}".format(grupo.contrato_financeiro).replace(",", "X").replace(".", ",").replace("X", ".") }}</td>
+                    <td>R$ {{ "{:,.2f}".format(grupo.financeiro_liquido_atual).replace(",", "X").replace(".", ",").replace("X", ".") }}</td>
+                    <td>R$ {{ "{:,.2f}".format(grupo.financeiro_acumulado_atual).replace(",", "X").replace(".", ",").replace("X", ".") }}</td>
+                    <td>R$ {{ "{:,.2f}".format(grupo.saldo_financeiro).replace(",", "X").replace(".", ",").replace("X", ".") }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h2>Top 10 itens do financeiro líquido atual</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Item</th>
+                    <th>Unidade</th>
+                    <th>Financeiro líquido atual</th>
+                    <th>Financeiro acumulado atual</th>
+                    <th>Saldo financeiro</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in top_itens_atual %}
+                <tr>
+                    <td>{{ item.codigo }}</td>
+                    <td>{{ item.item }}</td>
+                    <td>{{ item.unidade }}</td>
+                    <td>R$ {{ "{:,.2f}".format(item.financeiro_liquido_atual).replace(",", "X").replace(".", ",").replace("X", ".") }}</td>
+                    <td>R$ {{ "{:,.2f}".format(item.financeiro_acumulado_atual).replace(",", "X").replace(".", ",").replace("X", ".") }}</td>
+                    <td>R$ {{ "{:,.2f}".format(item.saldo_financeiro).replace(",", "X").replace(".", ",").replace("X", ".") }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h2>Itens lidos</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Linha</th>
+                    <th>Código</th>
+                    <th>Item</th>
+                    <th>Unid.</th>
+                    <th>Contrato</th>
+                    <th>Preço unitário</th>
+                    <th>Qtd. líquida atual</th>
+                    <th>Fin. líquido atual</th>
+                    <th>Saldo financeiro</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in itens %}
+                <tr>
+                    <td>{{ item.linha }}</td>
+                    <td>{{ item.codigo }}</td>
+                    <td>{{ item.item }}</td>
+                    <td>{{ item.unidade }}</td>
+                    <td>{{ item.contrato_quantidade }}</td>
+                    <td>R$ {{ "{:,.2f}".format(item.preco_unitario).replace(",", "X").replace(".", ",").replace("X", ".") }}</td>
+                    <td>{{ item.quantidade_liquida_atual }}</td>
+                    <td>R$ {{ "{:,.2f}".format(item.financeiro_liquido_atual).replace(",", "X").replace(".", ",").replace("X", ".") }}</td>
+                    <td>R$ {{ "{:,.2f}".format(item.saldo_financeiro).replace(",", "X").replace(".", ",").replace("X", ".") }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+</body>
+</html>
