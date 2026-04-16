@@ -322,7 +322,7 @@ def editar_registro(id):
     registro = DiarioObra.query.get_or_404(id)
 
     # Permissão:
-    # admin pode editar qualquer registro
+    # o admin pode editar qualquer registro 
     # engenheiro só pode editar o próprio registro
     if session.get('nivel') != 'admin' and registro.usuario_id != session.get('user_id'):
         return "Acesso negado"
@@ -377,6 +377,21 @@ def editar_registro(id):
         registro=registro,
         efetivo_formatado=efetivo_formatado
     )
+
+@app.route('/importacoes', methods=['GET', 'POST'])
+@login_required
+def importacoes():
+    nome_arquivo = None
+
+    if request.method == 'POST':
+        arquivo = request.files.get('arquivo')
+
+        if arquivo and arquivo.filename:
+            nome_arquivo = arquivo.filename
+        else:
+            nome_arquivo = 'Nenhum arquivo selecionado'
+
+    return render_template('importacoes.html', nome_arquivo=nome_arquivo)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

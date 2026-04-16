@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Importações</title>
+    <link rel="stylesheet" href="/static/style2.css">
+</head>
+<body>
+
+    <div class="navegacao">
+        <nav>
+            <a href="{{ url_for('dashboard') }}">DASHBOARD</a>
+            <a href="{{ url_for('importacoes') }}">IMPORTAÇÕES</a>
+            <a href="{{ url_for('admin') }}">ADMIN</a>
+            <a href="{{ url_for('logout') }}">SAIR</a>
+        </nav>
+    </div>
+
+    <div class="inicio-login">
+        <h1>Importações</h1>
+
+        <form method="POST" enctype="multipart/form-data">
+            <label for="arquivo">Selecione a planilha:</label><br><br>
+            <input type="file" name="arquivo" id="arquivo" accept=".xlsx,.xls,.csv" required>
+            <br><br>
+            <button type="submit">Enviar planilha</button>
+        </form>
+
+        {% if nome_arquivo %}
+            <hr>
+            <p><strong>Arquivo recebido:</strong> {{ nome_arquivo }}</p>
+        {% endif %}
+    </div>
+
+</body>
+</html>
