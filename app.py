@@ -394,9 +394,26 @@ def importacoes():
 
             try:
                 if arquivo.filename.endswith('.xlsx'):
-                    df = pd.read_excel(arquivo, header=11)
+                    df = pd.read_excel(arquivo, header=None)
+
+                    # encontra a linha onde começa a tabela real
+                    linha_inicio = df[
+                        df.apply(
+                            lambda row: row.astype(str).str.contains('CÓDIGO', case=False, na=False).any(),
+                            axis=1
+                        )
+                    ].index[0]
+
+                    # usa essa linha como cabeçalho
+                    df.columns = df.iloc[linha_inicio]
+
+                    # mantém só as linhas abaixo do cabeçalho
+                    df = df[(linha_inicio + 1):].copy()
+                    df.reset_index(drop=True, inplace=True)
+
                 elif arquivo.filename.endswith('.csv'):
                     df = pd.read_csv(arquivo)
+
                 else:
                     return "Formato não suportado"
 
@@ -408,6 +425,11 @@ def importacoes():
 
                 # preenche células vazias com valor acima
                 df.ffill(inplace=True)
+
+                # remove a linha técnica com "Líq. Atual" / "Unitário", se existir
+                if not df.empty and 'Líq. Atual' in df.iloc[0].astype(str).values:
+                    df = df.iloc[1:].copy()
+                    df.reset_index(drop=True, inplace=True)
 
                 dados = df.head(20).to_dict(orient='records')
 
