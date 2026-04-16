@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 from flask import render_template, request, flash
 from werkzeug.utils import secure_filename
 from services.importador_medicao import extrair_medicao_consolidada
+from flask import redirect
 
 from services.importador_medicao import extrair_medicao
 
@@ -709,63 +710,68 @@ def medicao_consolidada():
     nome_arquivo = None
 
     if request.method == 'POST':
-        arquivo = request.files.get('arquivo')
+        if 'arquivo' not in request.files:
+            flash('Campo de arquivo não enviado.', 'danger')
+            return redirect(request.url)
 
-        if not arquivo or not arquivo.filename:
-            flash('Selecione um arquivo .xlsx.', 'warning')
+        arquivo = request.files['arquivo']
+
+        if arquivo.filename == '':
+            flash('Nenhum arquivo selecionado.', 'warning')
+            return redirect(request.url)
+
+        nome_arquivo = secure_filename(arquivo.filename)
+
+        if not arquivo_xlsx_valido(nome_arquivo):
+            flash('Apenas arquivos .xlsx são suportados.', 'danger')
         else:
-            nome_arquivo = secure_filename(arquivo.filename)
+            try:
+                cabecalho, itens = extrair_medicao_consolidada(arquivo)
 
-            if not arquivo_xlsx_valido(nome_arquivo):
-                flash('Apenas arquivos .xlsx são suportados.', 'danger')
-            else:
-                try:
-                    cabecalho, itens = extrair_medicao_consolidada(arquivo)
+                resumo = {
+                    'total_itens': len(itens),
+                    'total_financeiro_acumulado_anterior': sum(float(item.get('financeiro_acumulado_anterior', 0) or 0) for item in itens),
+                    'total_financeiro_liquido_atual': sum(float(item.get('financeiro_liquido_atual', 0) or 0) for item in itens),
+                    'total_financeiro_acumulado_atual': sum(float(item.get('financeiro_acumulado_atual', 0) or 0) for item in itens),
+                    'total_saldo_financeiro': sum(float(item.get('saldo_financeiro', 0) or 0) for item in itens),
+                    'pi_mais_reajuste': 0
+                }
 
-                    resumo = {
-                        'total_itens': len(itens),
-                        'total_financeiro_acumulado_anterior': sum(float(item.get('financeiro_acumulado_anterior', 0) or 0) for item in itens),
-                        'total_financeiro_liquido_atual': sum(float(item.get('financeiro_liquido_atual', 0) or 0) for item in itens),
-                        'total_financeiro_acumulado_atual': sum(float(item.get('financeiro_acumulado_atual', 0) or 0) for item in itens),
-                        'total_saldo_financeiro': sum(float(item.get('saldo_financeiro', 0) or 0) for item in itens),
-                        'pi_mais_reajuste': 0
-                    }
+                grupos = {}
+                for item in itens:
+                    grupo = item.get('grupo') or 'SEM_GRUPO'
+                    if grupo not in grupos:
+                        grupos[grupo] = {
+                            'grupo': grupo,
+                            'quantidade_itens': 0,
+                            'contrato_financeiro': 0,
+                            'financeiro_liquido_atual': 0,
+                            'financeiro_acumulado_atual': 0,
+                            'saldo_financeiro': 0
+                        }
 
-                    grupos = {}
-                    for item in itens:
-                        grupo = item.get('grupo') or 'SEM_GRUPO'
-                        if grupo not in grupos:
-                            grupos[grupo] = {
-                                'grupo': grupo,
-                                'quantidade_itens': 0,
-                                'contrato_financeiro': 0,
-                                'financeiro_liquido_atual': 0,
-                                'financeiro_acumulado_atual': 0,
-                                'saldo_financeiro': 0
-                            }
+                    grupos[grupo]['quantidade_itens'] += 1
+                    grupos[grupo]['contrato_financeiro'] += float(item.get('contrato_financeiro', 0) or 0)
+                    grupos[grupo]['financeiro_liquido_atual'] += float(item.get('financeiro_liquido_atual', 0) or 0)
+                    grupos[grupo]['financeiro_acumulado_atual'] += float(item.get('financeiro_acumulado_atual', 0) or 0)
+                    grupos[grupo]['saldo_financeiro'] += float(item.get('saldo_financeiro', 0) or 0)
 
-                        grupos[grupo]['quantidade_itens'] += 1
-                        grupos[grupo]['contrato_financeiro'] += float(item.get('contrato_financeiro', 0) or 0)
-                        grupos[grupo]['financeiro_liquido_atual'] += float(item.get('financeiro_liquido_atual', 0) or 0)
-                        grupos[grupo]['financeiro_acumulado_atual'] += float(item.get('financeiro_acumulado_atual', 0) or 0)
-                        grupos[grupo]['saldo_financeiro'] += float(item.get('saldo_financeiro', 0) or 0)
+                grupos_dashboard = sorted(
+                    grupos.values(),
+                    key=lambda g: g['financeiro_liquido_atual'],
+                    reverse=True
+                )
 
-                    grupos_dashboard = sorted(
-                        grupos.values(),
-                        key=lambda g: g['financeiro_liquido_atual'],
-                        reverse=True
-                    )
+                top_itens_atual = sorted(
+                    itens,
+                    key=lambda i: float(i.get('financeiro_liquido_atual', 0) or 0),
+                    reverse=True
+                )[:10]
 
-                    top_itens_atual = sorted(
-                        itens,
-                        key=lambda i: float(i.get('financeiro_liquido_atual', 0) or 0),
-                        reverse=True
-                    )[:10]
+                flash('Aba MEDIÇÃO CONSOLIDADA carregada com sucesso.', 'success')
 
-                    flash('Aba MEDIÇÃO CONSOLIDADA carregada com sucesso.', 'success')
-
-                except Exception as e:
-                    flash(f'Erro ao ler a aba MEDIÇÃO CONSOLIDADA: {e}', 'danger')
+            except Exception as e:
+                flash(f'Erro ao ler a aba MEDIÇÃO CONSOLIDADA: {e}', 'danger')
 
     return render_template(
         'medicao_consolidada.html',
