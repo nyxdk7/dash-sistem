@@ -400,8 +400,8 @@ def importacoes():
                 else:
                     return "Formato não suportado"
 
-                # remove colunas vazias/sem nome
-                df = df.loc[:, ~df.columns.astype(str).str.contains('^Unnamed')]
+                # remove apenas colunas totalmente vazias
+                df.dropna(axis=1, how='all', inplace=True)
 
                 # remove linhas totalmente vazias
                 df.dropna(how='all', inplace=True)
