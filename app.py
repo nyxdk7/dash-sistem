@@ -510,5 +510,23 @@ def salvar_medicao():
         db.session.rollback()
         return f"Erro ao salvar medição: {str(e)}"
 
+@app.route('/medicoes')
+@login_required
+def medicoes():
+    medicoes = Medicao.query.order_by(Medicao.id.desc()).all()
+
+    total_medicoes = len(medicoes)
+    total_itens = ItemMedicao.query.count()
+
+    soma_total = db.session.query(db.func.sum(ItemMedicao.financeiro)).scalar() or 0
+
+    return render_template(
+        'medicoes.html',
+        medicoes=medicoes,
+        total_medicoes=total_medicoes,
+        total_itens=total_itens,
+        soma_total=soma_total
+    )
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
