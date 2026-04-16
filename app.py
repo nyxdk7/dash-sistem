@@ -498,74 +498,9 @@ def editar_registro(id):
         efetivo_formatado=efetivo_formatado
     )
 
-
-@app.route('/importacoes', methods=['GET', 'POST'])
-@login_required
-def importacoes():
-    dados = []
-    nome_arquivo = None
-    cabecalho = {}
-    total_itens = 0
-
-    obras = Obra.query.all()
-    abas = []
-    abas_dados = {}
-    aba_ativa = None
-
-    if request.method == 'POST':
-        arquivo = request.files.get('arquivo')
-
-        if not arquivo or not arquivo.filename:
-            flash('Selecione um arquivo .xlsx para importar.', 'warning')
-        else:
-            nome_arquivo = secure_filename(arquivo.filename)
-
-            if not arquivo_xlsx_valido(nome_arquivo):
-                flash('Apenas arquivos .xlsx são suportados.', 'danger')
-            else:
-                try:
-                    cabecalho, itens = extrair_medicao(arquivo)
-                    cabecalho = cabecalho or {}
-                    dados = itens or []
-                    total_itens = len(dados)
-
-                    for item in dados:
-                        nome_aba = str(item.get('aba')).strip() if item.get('aba') else 'Sem aba'
-
-                        if nome_aba not in abas_dados:
-                            abas_dados[nome_aba] = []
-
-                        abas_dados[nome_aba].append(item)
-
-                    abas = list(abas_dados.keys())
-
-                    if abas:
-                        aba_ativa = abas[0]
-
-                    if total_itens == 0:
-                        flash('Nenhum item válido encontrado na planilha.', 'warning')
-                    else:
-                        flash(
-                            f'Planilha "{nome_arquivo}" lida com sucesso. {total_itens} itens encontrados em {len(abas)} abas.',
-                            'success'
-                        )
-
-                except Exception as e:
-                    flash(f'Erro ao processar planilha: {str(e)}', 'danger')
-
-    return render_template(
-        'importacoes.html',
-        abas=abas,
-        abas_dados=abas_dados,
-        aba_ativa=aba_ativa,
-        nome_arquivo=nome_arquivo,
-        obras=obras,
-        dados=dados,
-        cabecalho=cabecalho,
-        total_itens=total_itens
-    )
-
-    
+@app.route('/importacoes')
+def importacoes_redirect():
+    return redirect('/medicao-consolidada')
 
 @app.route('/salvar-medicao', methods=['POST'])
 @login_required
