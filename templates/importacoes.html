@@ -197,7 +197,7 @@
                     <button
                         type="button"
                         class="aba-botao {% if aba == aba_ativa %}ativa{% endif %}"
-                        onclick="mostrarAba('{{ aba|replace(\"'\", \"\\'\") }}', this)">
+                        onclick='mostrarAba({{ aba|tojson }}, this)'>
                         {{ aba }}
                     </button>
                 {% endfor %}
