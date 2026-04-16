@@ -699,6 +699,9 @@ def ver_medicao(id):
         itens=itens
     )
 
+from flask import redirect, request, render_template, flash
+from werkzeug.utils import secure_filename
+
 @app.route('/medicao-consolidada', methods=['GET', 'POST'])
 @login_required
 def medicao_consolidada():
@@ -710,12 +713,20 @@ def medicao_consolidada():
     nome_arquivo = None
 
     if request.method == 'POST':
+
+        # 🔴 garante que o botão foi clicado
+        if 'enviar' not in request.form:
+            flash('Erro no envio do formulário.', 'danger')
+            return redirect(request.url)
+
+        # 🔴 garante que o arquivo chegou
         if 'arquivo' not in request.files:
-            flash('Campo de arquivo não enviado.', 'danger')
+            flash('Arquivo não chegou no servidor.', 'danger')
             return redirect(request.url)
 
         arquivo = request.files['arquivo']
 
+        # 🔴 garante que não veio vazio
         if arquivo.filename == '':
             flash('Nenhum arquivo selecionado.', 'warning')
             return redirect(request.url)
