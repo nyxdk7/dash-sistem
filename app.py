@@ -8,7 +8,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from flask import render_template, request, flash
 from werkzeug.utils import secure_filename
-from services.importador_medicao import extrair_medicao_consolidad
+from services.importador_medicao import extrair_medicao_consolidada
 
 from services.importador_medicao import extrair_medicao
 
