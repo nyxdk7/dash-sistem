@@ -400,7 +400,7 @@ def importacoes():
             try:
                 if arquivo.filename.endswith('.xlsx'):
                     cabecalho, itens = extrair_medicao(arquivo)
-                    dados = itens[:50]
+                    dados = itens
                     total_itens = len(itens)
                 else:
                     return "Apenas .xlsx suportado"

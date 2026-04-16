@@ -45,7 +45,7 @@
         {% if total_itens %}
             <hr>
             <p><strong>Total de itens encontrados:</strong> {{ total_itens }}</p>
-            <p><strong>Mostrando:</strong> {{ dados|length }} primeiros itens</p>
+            <p><strong>Mostrando:</strong> <span id="contador">50</span> itens</p>
         {% endif %}
 
         {% if dados %}
@@ -61,7 +61,7 @@
                     </tr>
 
                     {% for linha in dados %}
-                        <tr>
+                        <tr class="linha-dado" {% if loop.index > 50 %}style="display:none;"{% endif %}>
                             {% for valor in linha.values() %}
                                 <td style="padding:8px;">{{ valor }}</td>
                             {% endfor %}
@@ -69,8 +69,33 @@
                     {% endfor %}
                 </table>
             </div>
+
+            <br>
+
+            {% if total_itens > 50 %}
+                <button type="button" onclick="mostrarMais()" id="btnMostrar">Ver mais</button>
+            {% endif %}
         {% endif %}
     </div>
+
+    <script>
+        function mostrarMais() {
+            const linhas = document.querySelectorAll('.linha-dado');
+
+            linhas.forEach((linha) => {
+                if (linha.style.display === 'none') {
+                    linha.style.display = '';
+                }
+            });
+
+            document.getElementById('contador').innerText = linhas.length;
+
+            const botao = document.getElementById('btnMostrar');
+            if (botao) {
+                botao.style.display = 'none';
+            }
+        }
+    </script>
 
 </body>
 </html>
