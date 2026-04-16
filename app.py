@@ -38,11 +38,25 @@ class Usuario(db.Model):
 class DiarioObra(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     descricao = db.Column(db.Text, nullable=False)
+
     data_registro = db.Column(
-    db.DateTime,
-    default=lambda: datetime.now(ZoneInfo("America/Rio_Branco")),
-    nullable=False
-)
+        db.DateTime,
+        default=lambda: datetime.now(ZoneInfo("America/Rio_Branco")),
+        nullable=False
+    )
+
+    clima = db.Column(db.String(50), nullable=True)
+    efetivo = db.Column(db.Text, nullable=True)
+    ocorrencias = db.Column(db.Text, nullable=True)
+
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    obra_id = db.Column(db.Integer, db.ForeignKey('obra.id'), nullable=False)
+
+    usuario = db.relationship('Usuario')
+    obra = db.relationship('Obra')
+
+
+
 class Medicao(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome_arquivo = db.Column(db.String(255), nullable=False)
@@ -74,16 +88,6 @@ class ItemMedicao(db.Model):
     quantidade = db.Column(db.Float, nullable=True)
     preco = db.Column(db.Float, nullable=True)
     financeiro = db.Column(db.Float, nullable=True)
-
-    clima = db.Column(db.String(50), nullable=True)
-    efetivo = db.Column(db.Text, nullable=True)
-    ocorrencias = db.Column(db.Text, nullable=True)
-
-    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
-    obra_id = db.Column(db.Integer, db.ForeignKey('obra.id'), nullable=False)
-
-    usuario = db.relationship('Usuario')
-    obra = db.relationship('Obra')
 
 
 with app.app_context():
