@@ -30,6 +30,27 @@
             <hr>
             <p><strong>Arquivo recebido:</strong> {{ nome_arquivo }}</p>
         {% endif %}
+
+        {% if dados %}
+            <hr>
+            <h2>Prévia da planilha</h2>
+
+            <table border="1" style="color:white; margin:auto;">
+                <tr>
+                    {% for coluna in dados[0].keys() %}
+                        <th>{{ coluna }}</th>
+                    {% endfor %}
+                </tr>
+
+                {% for linha in dados %}
+                    <tr>
+                        {% for valor in linha.values() %}
+                            <td>{{ valor }}</td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </table>
+        {% endif %}
     </div>
 
 </body>

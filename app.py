@@ -378,20 +378,31 @@ def editar_registro(id):
         efetivo_formatado=efetivo_formatado
     )
 
+import pandas as pd
+
 @app.route('/importacoes', methods=['GET', 'POST'])
 @login_required
 def importacoes():
-    nome_arquivo = None
+    dados = None
 
     if request.method == 'POST':
         arquivo = request.files.get('arquivo')
 
         if arquivo and arquivo.filename:
-            nome_arquivo = arquivo.filename
-        else:
-            nome_arquivo = 'Nenhum arquivo selecionado'
+            try:
+                if arquivo.filename.endswith('.xlsx'):
+                    df = pd.read_excel(arquivo)
+                elif arquivo.filename.endswith('.csv'):
+                    df = pd.read_csv(arquivo)
+                else:
+                    return "Formato não suportado"
 
-    return render_template('importacoes.html', nome_arquivo=nome_arquivo)
+                dados = df.head(20).to_dict(orient='records')
+
+            except Exception as e:
+                return f"Erro ao ler planilha: {str(e)}"
+
+    return render_template('importacoes.html', dados=dados)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
