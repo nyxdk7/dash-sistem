@@ -233,27 +233,3 @@ def extrair_medicao(arquivo):
     }
 
     return cabecalho_convertido, itens_convertidos
-
-
-def extrair_medicao(arquivo):
-    cabecalho, itens_originais, resumo, grupos_dashboard, top_itens_atual = extrair_medicao_consolidada(arquivo)
-
-    itens_convertidos = []
-
-    for item in itens_originais:
-        itens_convertidos.append({
-            "aba": cabecalho.get("aba_lida", "MEDIÇÃO CONSOLIDADA"),
-            "tipo_aba": "medicao_consolidada",
-            "tipo": "medicao_consolidada",
-            "codigo": item.get("codigo"),
-            "descricao": item.get("item"),
-            "unidade": item.get("unidade"),
-            "quantidade": item.get("quantidade_liquida_atual"),
-            "preco_unitario": item.get("preco_unitario"),
-            "preco_total": item.get("financeiro_liquido_atual"),
-            "total": item.get("financeiro_liquido_atual"),
-            "marca": None,
-            "observacao": None
-        })
-
-    return cabecalho, itens_convertidos
