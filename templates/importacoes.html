@@ -31,25 +31,44 @@
             <p><strong>Arquivo recebido:</strong> {{ nome_arquivo }}</p>
         {% endif %}
 
+        {% if cabecalho %}
+            <hr>
+            <h2>Resumo da Medição</h2>
+
+            <div style="color:white; text-align:left; max-width:900px; margin:auto;">
+                {% for chave, valor in cabecalho.items() %}
+                    <p><strong>{{ chave|capitalize }}:</strong> {{ valor }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% if total_itens %}
+            <hr>
+            <p><strong>Total de itens encontrados:</strong> {{ total_itens }}</p>
+            <p><strong>Mostrando:</strong> {{ dados|length }} primeiros itens</p>
+        {% endif %}
+
         {% if dados %}
             <hr>
             <h2>Prévia da planilha</h2>
 
-            <table border="1" style="color:white; margin:auto;">
-                <tr>
-                    {% for coluna in dados[0].keys() %}
-                        <th>{{ coluna }}</th>
-                    {% endfor %}
-                </tr>
-
-                {% for linha in dados %}
+            <div style="overflow-x:auto; max-width:100%;">
+                <table border="1" style="color:white; margin:auto; border-collapse:collapse;">
                     <tr>
-                        {% for valor in linha.values() %}
-                            <td>{{ valor }}</td>
+                        {% for coluna in dados[0].keys() %}
+                            <th style="padding:8px;">{{ coluna }}</th>
                         {% endfor %}
                     </tr>
-                {% endfor %}
-            </table>
+
+                    {% for linha in dados %}
+                        <tr>
+                            {% for valor in linha.values() %}
+                                <td style="padding:8px;">{{ valor }}</td>
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                </table>
+            </div>
         {% endif %}
     </div>
 

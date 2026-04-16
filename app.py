@@ -381,11 +381,15 @@ def editar_registro(id):
 
 import pandas as pd
 
+from services.importador_medicao import extrair_medicao
+
 @app.route('/importacoes', methods=['GET', 'POST'])
 @login_required
 def importacoes():
     dados = None
     nome_arquivo = None
+    cabecalho = None
+    total_itens = None
 
     if request.method == 'POST':
         arquivo = request.files.get('arquivo')
@@ -395,15 +399,22 @@ def importacoes():
 
             try:
                 if arquivo.filename.endswith('.xlsx'):
-                    itens = extrair_medicao(arquivo)
-                    dados = itens
+                    cabecalho, itens = extrair_medicao(arquivo)
+                    dados = itens[:50]
+                    total_itens = len(itens)
                 else:
-                    return "Apenas .xlsx suportado por enquanto"
+                    return "Apenas .xlsx suportado"
 
             except Exception as e:
                 return f"Erro ao processar planilha: {str(e)}"
 
-    return render_template('importacoes.html', dados=dados, nome_arquivo=nome_arquivo)
+    return render_template(
+        'importacoes.html',
+        dados=dados,
+        nome_arquivo=nome_arquivo,
+        cabecalho=cabecalho,
+        total_itens=total_itens
+    )
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
