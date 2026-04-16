@@ -70,7 +70,7 @@ def detectar_tipo_aba(ws):
 
     conteudo = ' '.join(textos)
 
-    # modelo principal da sua planilha
+    # modelo principal da sua planilha consolidada
     if 'código' in conteudo and 'preço unitário' in conteudo and 'financeiro' in conteudo:
         return 'contrato'
 
@@ -92,7 +92,10 @@ def detectar_tipo_aba(ws):
 
 
 def localizar_linha_cabecalho_contrato(ws):
-    for idx, row in enumerate(ws.iter_rows(min_row=1, max_row=min(ws.max_row, 30), values_only=True), start=1):
+    for idx, row in enumerate(
+        ws.iter_rows(min_row=1, max_row=min(ws.max_row, 30), values_only=True),
+        start=1
+    ):
         linha = [limpar_texto(c).lower() for c in row]
 
         if 'código' in linha and 'item' in linha:
@@ -112,34 +115,44 @@ def extrair_aba_contrato(ws):
         return cabecalho, itens
 
     for row in ws.iter_rows(min_row=linha_cabecalho + 1, max_row=ws.max_row, values_only=True):
-        # Estrutura observada na planilha:
-        # 0 = código principal
-        # 1 = código auxiliar/em alguns casos vazio
-        # 2 = item
-        # 3 = unid
-        # 4 = contrato físico
-        # 5 = contrato financeiro
-        # 9 = preço unitário
-        codigo_base = limpar_texto(row[0]) if len(row) > 0 else ''
-        codigo_aux = limpar_texto(row[1]) if len(row) > 1 else ''
-        descricao = limpar_texto(row[2]) if len(row) > 2 else ''
-        unidade = limpar_texto(row[3]) if len(row) > 3 else ''
-        quantidade = limpar_numero(row[4]) if len(row) > 4 else 0.0
-        financeiro = limpar_numero(row[5]) if len(row) > 5 else 0.0
-        preco_unitario = limpar_numero(row[9]) if len(row) > 9 else 0.0
+        codigo = limpar_texto(row[0]) if len(row) > 0 else ''
 
-        codigo = codigo_aux if codigo_aux else codigo_base
+        valor_coluna_1 = row[1] if len(row) > 1 else None
+        texto_coluna_1 = limpar_texto(valor_coluna_1)
 
-        # linha totalmente vazia
-        if not codigo_base and not codigo_aux and not descricao and not unidade and quantidade == 0 and financeiro == 0:
+        # Algumas linhas têm um código auxiliar na coluna 1; outras já trazem a descrição nela.
+        tem_codigo_aux = bool(texto_coluna_1) and (
+            isinstance(valor_coluna_1, (int, float))
+            or texto_coluna_1.isdigit()
+            or ('/' in texto_coluna_1 and len(texto_coluna_1) <= 20)
+            or (texto_coluna_1.isupper() and len(texto_coluna_1) <= 25 and ' ' not in texto_coluna_1)
+        )
+
+        if tem_codigo_aux:
+            descricao = limpar_texto(row[2]) if len(row) > 2 else ''
+            unidade = limpar_texto(row[3]) if len(row) > 3 else ''
+            quantidade = limpar_numero(row[4]) if len(row) > 4 else 0.0
+            financeiro = limpar_numero(row[5]) if len(row) > 5 else 0.0
+            preco_unitario = limpar_numero(row[9]) if len(row) > 9 else 0.0
+            observacao = texto_coluna_1
+        else:
+            descricao = limpar_texto(row[1]) if len(row) > 1 else ''
+            unidade = limpar_texto(row[2]) if len(row) > 2 else ''
+            quantidade = limpar_numero(row[3]) if len(row) > 3 else 0.0
+            financeiro = limpar_numero(row[4]) if len(row) > 4 else 0.0
+            preco_unitario = limpar_numero(row[8]) if len(row) > 8 else 0.0
+            observacao = ''
+
+        # ignora linha totalmente vazia
+        if not codigo and not descricao and not unidade and quantidade == 0 and financeiro == 0:
             continue
 
-        # ignora rodapé / totalizações finais
         descricao_lower = descricao.lower()
+
+        # ignora totalizações
         if descricao_lower.startswith('total') or descricao_lower.startswith('subtotal'):
             continue
 
-        # mantém linhas de grupo, mas sem quebrar
         item = {
             'aba': ws.title,
             'tipo_aba': 'contrato',
@@ -149,11 +162,10 @@ def extrair_aba_contrato(ws):
             'quantidade': quantidade,
             'preco_unitario': preco_unitario,
             'preco_total': financeiro,
-            'observacao': '',
+            'observacao': observacao,
             'marca': ''
         }
 
-        # só adiciona se tiver alguma informação útil
         if item['codigo'] or item['descricao']:
             itens.append(item)
 
@@ -265,6 +277,24 @@ def extrair_aba_cbuq(ws):
 def extrair_medicao(arquivo):
     wb = openpyxl.load_workbook(arquivo, data_only=True)
     cabecalho_geral = None
+
+    nomes_prioritarios = [
+        'medição consolidada',
+        'medicao consolidada',
+        'medição resumo',
+        'medicao resumo',
+        'resumo'
+    ]
+
+    # 1. tenta achar primeiro a aba principal
+    for ws in wb.worksheets:
+        titulo = ws.title.strip().lower()
+
+        if any(nome in titulo for nome in nomes_prioritarios):
+            cabecalho, itens = extrair_aba_contrato(ws)
+            return cabecalho or {}, itens
+
+    # 2. se não achar, cai no comportamento antigo
     todos_itens = []
 
     for ws in wb.worksheets:
@@ -286,4 +316,4 @@ def extrair_medicao(arquivo):
 
         todos_itens.extend(itens)
 
-    return cabecalho_geral, todos_itens
+    return cabecalho_geral or {}, todos_itens
