@@ -152,6 +152,29 @@ def nivel_required(nivel_permitido):
         return wrap
     return decorator
 
+def ler_planilha_bruta(arquivo):
+    import openpyxl
+
+    wb = openpyxl.load_workbook(arquivo, data_only=True)
+
+    abas = []
+
+    for ws in wb.worksheets:
+        dados = []
+
+        for row in ws.iter_rows(values_only=True):
+            linha = []
+            for cell in row:
+                linha.append(str(cell) if cell else '')
+            dados.append(linha)
+
+        abas.append({
+            "nome": ws.title,
+            "linhas": dados
+        })
+
+    return abas
+
 
 @app.route('/')
 def home():
@@ -508,13 +531,12 @@ def importacoes():
                     flash(f'Erro ao processar planilha: {str(e)}', 'danger')
 
     return render_template(
-        'importacoes.html',
-        dados=dados,
-        nome_arquivo=nome_arquivo,
-        cabecalho=cabecalho,
-        total_itens=total_itens,
-        obras=obras
-    )
+    'importacoes.html',
+    abas=abas,
+    nome_arquivo=nome_arquivo,
+    obras=obras
+   )
+    
 
 
 @app.route('/salvar-medicao', methods=['POST'])
