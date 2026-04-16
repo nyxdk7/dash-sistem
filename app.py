@@ -6,6 +6,7 @@ import urllib.parse
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from services.importador_medicao import extrair_medicao
+from zoneinfo import ZoneInfo
 
 app = Flask(__name__)
 app.secret_key = 'segredo123'
@@ -42,6 +43,37 @@ class DiarioObra(db.Model):
     default=lambda: datetime.now(ZoneInfo("America/Rio_Branco")),
     nullable=False
 )
+class Medicao(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    nome_arquivo = db.Column(db.String(255), nullable=False)
+    data_importacao = db.Column(db.DateTime, default=lambda: datetime.now(ZoneInfo("America/Rio_Branco")), nullable=False)
+
+    obra_id = db.Column(db.Integer, db.ForeignKey('obra.id'), nullable=False)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+
+    processo = db.Column(db.String(255), nullable=True)
+    rodovia = db.Column(db.String(255), nullable=True)
+    trecho = db.Column(db.String(255), nullable=True)
+    subtrecho = db.Column(db.String(255), nullable=True)
+    periodo = db.Column(db.String(255), nullable=True)
+    medicao = db.Column(db.String(255), nullable=True)
+
+    obra = db.relationship('Obra')
+    usuario = db.relationship('Usuario')
+    itens = db.relationship('ItemMedicao', backref='medicao_rel', lazy=True, cascade='all, delete-orphan')
+
+
+class ItemMedicao(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+
+    medicao_id = db.Column(db.Integer, db.ForeignKey('medicao.id'), nullable=False)
+
+    codigo = db.Column(db.String(50), nullable=True)
+    item = db.Column(db.Text, nullable=True)
+    unidade = db.Column(db.String(50), nullable=True)
+    quantidade = db.Column(db.Float, nullable=True)
+    preco = db.Column(db.Float, nullable=True)
+    financeiro = db.Column(db.Float, nullable=True)
 
     clima = db.Column(db.String(50), nullable=True)
     efetivo = db.Column(db.Text, nullable=True)
