@@ -384,11 +384,14 @@ import pandas as pd
 @login_required
 def importacoes():
     dados = None
+    nome_arquivo = None
 
     if request.method == 'POST':
         arquivo = request.files.get('arquivo')
 
         if arquivo and arquivo.filename:
+            nome_arquivo = arquivo.filename
+
             try:
                 if arquivo.filename.endswith('.xlsx'):
                     df = pd.read_excel(arquivo)
@@ -397,12 +400,18 @@ def importacoes():
                 else:
                     return "Formato não suportado"
 
+                # remove linhas totalmente vazias
+                df.dropna(how='all', inplace=True)
+
+                # preenche células vazias com valor acima
+                df.fillna(method='ffill', inplace=True)
+
                 dados = df.head(20).to_dict(orient='records')
 
             except Exception as e:
                 return f"Erro ao ler planilha: {str(e)}"
 
-    return render_template('importacoes.html', dados=dados)
+    return render_template('importacoes.html', dados=dados, nome_arquivo=nome_arquivo)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
