@@ -500,7 +500,11 @@ def importacoes():
     nome_arquivo = None
     cabecalho = None
     total_itens = 0
+
     obras = Obra.query.all()
+    abas = []
+    abas_dados = {}
+    aba_ativa = None
 
     if request.method == 'POST':
         arquivo = request.files.get('arquivo')
@@ -516,26 +520,47 @@ def importacoes():
                 try:
                     cabecalho, itens = extrair_medicao(arquivo)
                     cabecalho = cabecalho or {}
-                    dados = itens
                     total_itens = len(itens)
+
+                    for item in itens:
+                        nome_aba = str(item.get('aba')).strip() if item.get('aba') else 'Sem aba'
+
+                        if nome_aba not in abas_dados:
+                            abas_dados[nome_aba] = []
+
+                        abas_dados[nome_aba].append(item)
+
+                    abas = sorted(abas_dados.keys())
+
+                    if abas:
+                        aba_ativa = abas[0]
+                        dados = abas_dados[aba_ativa]
+                    else:
+                        dados = []
 
                     if total_itens == 0:
                         flash('Nenhum item válido encontrado na planilha.', 'warning')
                     else:
                         flash(
-                            f'Planilha "{nome_arquivo}" lida com sucesso. {total_itens} itens encontrados.',
+                            f'Planilha "{nome_arquivo}" lida com sucesso. {total_itens} itens encontrados em {len(abas)} abas.',
                             'success'
                         )
 
                 except Exception as e:
                     flash(f'Erro ao processar planilha: {str(e)}', 'danger')
 
-    return render_template(
-    'importacoes.html',
-    abas=abas,
-    nome_arquivo=nome_arquivo,
-    obras=obras
-   )
+        return render_template(
+        'importacoes.html',
+        abas=abas,
+        abas_dados=abas_dados,
+        aba_ativa=aba_ativa,
+        nome_arquivo=nome_arquivo,
+        obras=obras,
+        dados=dados,
+        cabecalho=cabecalho,
+        total_itens=total_itens
+    )
+    
     
 
 
