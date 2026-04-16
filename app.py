@@ -709,7 +709,13 @@ def medicao_consolidada():
     nome_arquivo = None
 
     if request.method == 'POST':
+        print("DEBUG method:", request.method)
+        print("DEBUG files keys:", list(request.files.keys()))
+
         arquivo = request.files.get('arquivo')
+
+        print("DEBUG arquivo:", arquivo)
+        print("DEBUG arquivo.filename:", arquivo.filename if arquivo else None)
 
         if not arquivo or not arquivo.filename:
             flash('Selecione um arquivo .xlsx.', 'warning')
