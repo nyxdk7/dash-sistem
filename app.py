@@ -404,7 +404,7 @@ def importacoes():
                 df.dropna(how='all', inplace=True)
 
                 # preenche células vazias com valor acima
-                df.fillna(method='ffill', inplace=True)
+                df.ffill(inplace=True)
 
                 dados = df.head(20).to_dict(orient='records')
 
