@@ -19,6 +19,7 @@
     <div class="inicio-login">
         <h1>Importações</h1>
 
+        <!-- FORMULÁRIO DE UPLOAD -->
         <form method="POST" enctype="multipart/form-data">
             <label for="arquivo">Selecione a planilha:</label><br><br>
             <input type="file" name="arquivo" id="arquivo" accept=".xlsx,.xls,.csv" required>
@@ -31,6 +32,24 @@
             <p><strong>Arquivo recebido:</strong> {{ nome_arquivo }}</p>
         {% endif %}
 
+        <!-- BOTÃO DE SALVAR -->
+        {% if nome_arquivo and dados %}
+            <br>
+            <form method="POST" action="{{ url_for('salvar_medicao') }}" enctype="multipart/form-data">
+                <p style="color:orange;">
+                    Para salvar, selecione novamente a planilha:
+                </p>
+
+                <input type="file" name="arquivo" accept=".xlsx" required>
+                <br><br>
+
+                <button type="submit" style="background:green; color:white;">
+                    Salvar Medição no Banco
+                </button>
+            </form>
+        {% endif %}
+
+        <!-- RESUMO -->
         {% if cabecalho %}
             <hr>
             <h2>Resumo da Medição</h2>
@@ -42,12 +61,14 @@
             </div>
         {% endif %}
 
+        <!-- CONTADOR -->
         {% if total_itens %}
             <hr>
             <p><strong>Total de itens encontrados:</strong> {{ total_itens }}</p>
             <p><strong>Mostrando:</strong> <span id="contador">50</span> itens</p>
         {% endif %}
 
+        <!-- TABELA -->
         {% if dados %}
             <hr>
             <h2>Prévia da planilha</h2>
@@ -73,7 +94,9 @@
             <br>
 
             {% if total_itens > 50 %}
-                <button type="button" onclick="mostrarMais()" id="btnMostrar">Ver mais</button>
+                <button type="button" onclick="mostrarMais()" id="btnMostrar">
+                    Ver mais
+                </button>
             {% endif %}
         {% endif %}
     </div>
