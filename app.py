@@ -632,7 +632,7 @@ def medicoes():
         soma_total=soma_total
     )
 
-@@app.route('/medicao/<int:id>')
+@app.route('/medicao/<int:id>')
 @login_required
 def ver_medicao(id):
     medicao = Medicao.query.get_or_404(id)
