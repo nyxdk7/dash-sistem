@@ -230,20 +230,20 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for item in itens %}
-                                        <tr class="linha-aba linha-{{ loop.parent.loop.index }}" {% if loop.index > 50 %}style="display:none;"{% endif %}>
-                                            <td>{{ item.get('aba', '') }}</td>
-                                            <td>{{ item.get('tipo_aba', '') }}</td>
-                                            <td>{{ item.get('codigo', '') }}</td>
-                                            <td>{{ item.get('descricao', '') }}</td>
-                                            <td>{{ item.get('unidade', '') }}</td>
-                                            <td>{{ item.get('quantidade', '') }}</td>
-                                            <td>{{ item.get('preco_unitario', '') }}</td>
-                                            <td>{{ item.get('preco_total', '') }}</td>
-                                            <td>{{ item.get('marca', '') }}</td>
-                                            <td>{{ item.get('observacao', '') }}</td>
-                                        </tr>
-                                    {% endfor %}
+                        {% for aba, itens_aba in abas_dados.items() %}
+                            {% set aba_idx = loop.index %}
+
+                            {% for item in itens_aba %}
+                            <tr class="linha-aba linha-{{ aba_idx }}" {% if loop.index > 50 %}style="display:none;"{% endif %}>
+                               <td>{{ item.codigo or '' }}</td>
+                               <td>{{ item.descricao or '' }}</td>
+                               <td>{{ item.unidade or '' }}</td>
+                               <td>{{ item.quantidade or '' }}</td>
+                               <td>{{ item.preco_unitario or '' }}</td>
+                               <td>{{ item.total or '' }}</td>
+                            </tr>
+                            {% endfor %}
+                       {% endfor %}
                                 </tbody>
                             </table>
                         </div>
