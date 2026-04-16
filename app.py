@@ -495,9 +495,9 @@ def editar_registro(id):
 @app.route('/importacoes', methods=['GET', 'POST'])
 @login_required
 def importacoes():
-    dados = None
+    dados = []
     nome_arquivo = None
-    cabecalho = None
+    cabecalho = {}
     total_itens = 0
 
     obras = Obra.query.all()
@@ -519,17 +519,10 @@ def importacoes():
                 try:
                     cabecalho, itens = extrair_medicao(arquivo)
                     cabecalho = cabecalho or {}
-                    total_itens = len(itens)
+                    dados = itens or []
+                    total_itens = len(dados)
 
-                    # Separar abas
-                    abas = sorted({
-                        str(item.get('aba')).strip()
-                        for item in itens
-                        if item.get('aba')
-                    })
-
-                    # Organizar dados por aba (isso é MUITO importante pro seu plano)
-                    for item in itens:
+                    for item in dados:
                         nome_aba = str(item.get('aba')).strip() if item.get('aba') else 'Sem aba'
 
                         if nome_aba not in abas_dados:
@@ -537,7 +530,8 @@ def importacoes():
 
                         abas_dados[nome_aba].append(item)
 
-                    # Define primeira aba como ativa
+                    abas = list(abas_dados.keys())
+
                     if abas:
                         aba_ativa = abas[0]
 
