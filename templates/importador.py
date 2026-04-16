@@ -7,7 +7,7 @@ def limpar_texto(valor):
     return str(valor).strip()
 
 
-def limpar_numero(valor):
+def converter_numero(valor):
     if valor is None or valor == '':
         return 0.0
 
@@ -15,263 +15,216 @@ def limpar_numero(valor):
         return float(valor)
 
     texto = str(valor).strip()
-    texto = texto.replace('R$', '').replace(' ', '')
 
-    # padrão brasileiro: 1.234,56
+    # remove espaços
+    texto = texto.replace(' ', '')
+
+    # caso venha no padrão brasileiro: 1.234,56
     if ',' in texto:
         texto = texto.replace('.', '').replace(',', '.')
 
     try:
         return float(texto)
-    except ValueError:
+    except Exception:
         return 0.0
 
 
+def normalizar_texto(valor):
+    return limpar_texto(valor).lower()
+
+
 def extrair_cabecalho_padrao(ws):
-    cabecalho = {}
+    cabecalho = {
+        'obra': '',
+        'empresa': '',
+        'contrato': '',
+        'boletim': '',
+        'medicao': ''
+    }
 
     for row in ws.iter_rows(min_row=1, max_row=min(ws.max_row, 15), values_only=True):
-        linha = [limpar_texto(c) for c in row]
+        for cell in row:
+            texto = normalizar_texto(cell)
 
-        for i, valor in enumerate(linha):
-            valor_lower = valor.lower()
+            if not texto:
+                continue
 
-            if valor_lower == 'processo:' and i + 1 < len(linha):
-                cabecalho['processo'] = linha[i + 1]
-            elif valor_lower == 'contrato:' and i + 1 < len(linha):
-                cabecalho['contrato'] = linha[i + 1]
-            elif valor_lower == 'contratada:' and i + 1 < len(linha):
-                cabecalho['contratada'] = linha[i + 1]
-            elif valor_lower == 'rodovia:' and i + 1 < len(linha):
-                cabecalho['rodovia'] = linha[i + 1]
-            elif valor_lower == 'trecho:' and i + 1 < len(linha):
-                cabecalho['trecho'] = linha[i + 1]
-            elif valor_lower == 'sub-trecho:' and i + 1 < len(linha):
-                cabecalho['sub_trecho'] = linha[i + 1]
-            elif valor_lower == 'segmento:' and i + 1 < len(linha):
-                cabecalho['segmento'] = linha[i + 1]
-            elif valor_lower == 'medição:' and i + 1 < len(linha):
-                cabecalho['medicao'] = linha[i + 1]
-            elif valor_lower == 'período:' and i + 1 < len(linha):
-                cabecalho['periodo'] = linha[i + 1]
-            elif valor_lower == 'período acum.:' and i + 1 < len(linha):
-                cabecalho['periodo_acumulado'] = linha[i + 1]
+            if 'obra' in texto and not cabecalho['obra']:
+                cabecalho['obra'] = limpar_texto(cell)
+            elif 'empresa' in texto and not cabecalho['empresa']:
+                cabecalho['empresa'] = limpar_texto(cell)
+            elif 'contrato' in texto and not cabecalho['contrato']:
+                cabecalho['contrato'] = limpar_texto(cell)
+            elif 'boletim' in texto and not cabecalho['boletim']:
+                cabecalho['boletim'] = limpar_texto(cell)
+            elif 'medi' in texto and not cabecalho['medicao']:
+                cabecalho['medicao'] = limpar_texto(cell)
 
     return cabecalho
 
 
 def detectar_tipo_aba(ws):
-    textos = []
+    titulo = ws.title.strip().lower()
 
-    for row in ws.iter_rows(min_row=1, max_row=min(ws.max_row, 20), values_only=True):
-        for cell in row:
-            if cell is not None:
-                textos.append(str(cell).strip().lower())
-
-    conteudo = ' '.join(textos)
-
-    # modelo principal da sua planilha consolidada
-    if 'código' in conteudo and 'preço unitário' in conteudo and 'financeiro' in conteudo:
+    if 'ilum' in titulo:
+        return 'iluminacao'
+    if 'eros' in titulo:
+        return 'erosao'
+    if 'cbuq' in titulo:
+        return 'cbuq'
+    if 'contrato' in titulo:
         return 'contrato'
 
-    # iluminação
-    if 'descrição do produto' in conteudo and 'preço total' in conteudo:
-        return 'iluminacao'
+    # fallback pelo conteúdo
+    for row in ws.iter_rows(min_row=1, max_row=min(ws.max_row, 20), values_only=True):
+        linha = ' '.join([normalizar_texto(c) for c in row if c is not None])
 
-    # erosão / memória de cálculo
-    if 'especificação dos serviços' in conteudo and 'volume' in conteudo:
-        return 'erosao'
-
-    # CBUQ por memória geométrica
-    if 'relação do cbuq executado' in conteudo or (
-        'comprimento' in conteudo and 'largura' in conteudo and 'espessura' in conteudo
-    ):
-        return 'cbuq'
+        if 'ilum' in linha:
+            return 'iluminacao'
+        if 'eros' in linha:
+            return 'erosao'
+        if 'cbuq' in linha:
+            return 'cbuq'
+        if 'contrato' in linha:
+            return 'contrato'
 
     return 'desconhecido'
 
 
-def localizar_linha_cabecalho_contrato(ws):
-    for idx, row in enumerate(
-        ws.iter_rows(min_row=1, max_row=min(ws.max_row, 30), values_only=True),
-        start=1
-    ):
-        linha = [limpar_texto(c).lower() for c in row]
+def localizar_linha_cabecalho_generico(ws):
+    for i, row in enumerate(ws.iter_rows(values_only=True), start=1):
+        valores = [normalizar_texto(v) for v in row if v is not None]
+        linha = ' '.join(valores)
 
-        if 'código' in linha and 'item' in linha:
-            texto_linha = ' '.join(linha)
-            if 'preço' in texto_linha or 'financeiro' in texto_linha or 'contrato' in texto_linha:
-                return idx
+        tem_codigo = 'codigo' in linha or 'código' in linha
+        tem_descricao = 'descr' in linha
+        tem_unidade = 'unid' in linha
+        tem_quantidade = 'quant' in linha
+
+        if tem_codigo and tem_descricao and (tem_unidade or tem_quantidade):
+            return i
 
     return None
 
 
-def extrair_aba_contrato(ws):
+def mapear_colunas_por_cabecalho(ws, linha_cabecalho):
+    headers = []
+    for cell in ws[linha_cabecalho]:
+        headers.append(normalizar_texto(cell.value))
+
+    def encontrar_coluna(*termos, obrigatorios=True):
+        for idx, h in enumerate(headers):
+            if not h:
+                continue
+
+            if obrigatorios:
+                if all(t in h for t in termos):
+                    return idx
+            else:
+                if any(t in h for t in termos):
+                    return idx
+        return None
+
+    mapa = {
+        'aba': encontrar_coluna('aba'),
+        'tipo_aba': encontrar_coluna('tipo'),
+        'codigo': encontrar_coluna('codigo') if encontrar_coluna('codigo') is not None else encontrar_coluna('código'),
+        'descricao': encontrar_coluna('descr'),
+        'unidade': encontrar_coluna('unid'),
+        'quantidade': encontrar_coluna('quant'),
+        'observacao': encontrar_coluna('observ'),
+        'marca': encontrar_coluna('marca'),
+        'preco_unitario': None,
+        'preco_total': None,
+    }
+
+    # tenta achar preço unitário
+    for idx, h in enumerate(headers):
+        if not h:
+            continue
+        if ('preco' in h or 'preço' in h or 'valor' in h) and ('unit' in h):
+            mapa['preco_unitario'] = idx
+            break
+
+    # tenta achar preço total
+    for idx, h in enumerate(headers):
+        if not h:
+            continue
+        if ('preco' in h or 'preço' in h or 'valor' in h) and ('total' in h):
+            mapa['preco_total'] = idx
+            break
+
+    return mapa
+
+
+def extrair_aba_medicao_consolidada(ws):
     cabecalho = extrair_cabecalho_padrao(ws)
     itens = []
 
-    linha_cabecalho = localizar_linha_cabecalho_contrato(ws)
+    linha_cabecalho = localizar_linha_cabecalho_generico(ws)
     if not linha_cabecalho:
         return cabecalho, itens
 
+    mapa = mapear_colunas_por_cabecalho(ws, linha_cabecalho)
+
     for row in ws.iter_rows(min_row=linha_cabecalho + 1, max_row=ws.max_row, values_only=True):
-        codigo = limpar_texto(row[0]) if len(row) > 0 else ''
-
-        valor_coluna_1 = row[1] if len(row) > 1 else None
-        texto_coluna_1 = limpar_texto(valor_coluna_1)
-
-        # Algumas linhas têm um código auxiliar na coluna 1; outras já trazem a descrição nela.
-        tem_codigo_aux = bool(texto_coluna_1) and (
-            isinstance(valor_coluna_1, (int, float))
-            or texto_coluna_1.isdigit()
-            or ('/' in texto_coluna_1 and len(texto_coluna_1) <= 20)
-            or (texto_coluna_1.isupper() and len(texto_coluna_1) <= 25 and ' ' not in texto_coluna_1)
-        )
-
-        if tem_codigo_aux:
-            descricao = limpar_texto(row[2]) if len(row) > 2 else ''
-            unidade = limpar_texto(row[3]) if len(row) > 3 else ''
-            quantidade = limpar_numero(row[4]) if len(row) > 4 else 0.0
-            financeiro = limpar_numero(row[5]) if len(row) > 5 else 0.0
-            preco_unitario = limpar_numero(row[9]) if len(row) > 9 else 0.0
-            observacao = texto_coluna_1
-        else:
-            descricao = limpar_texto(row[1]) if len(row) > 1 else ''
-            unidade = limpar_texto(row[2]) if len(row) > 2 else ''
-            quantidade = limpar_numero(row[3]) if len(row) > 3 else 0.0
-            financeiro = limpar_numero(row[4]) if len(row) > 4 else 0.0
-            preco_unitario = limpar_numero(row[8]) if len(row) > 8 else 0.0
-            observacao = ''
-
-        # ignora linha totalmente vazia
-        if not codigo and not descricao and not unidade and quantidade == 0 and financeiro == 0:
+        if not row:
             continue
 
-        descricao_lower = descricao.lower()
-
-        # ignora totalizações
-        if descricao_lower.startswith('total') or descricao_lower.startswith('subtotal'):
+        if all(v is None or limpar_texto(v) == '' for v in row):
             continue
+
+        codigo = row[mapa['codigo']] if mapa['codigo'] is not None and mapa['codigo'] < len(row) else None
+        descricao = row[mapa['descricao']] if mapa['descricao'] is not None and mapa['descricao'] < len(row) else None
+
+        if limpar_texto(codigo) == '' and limpar_texto(descricao) == '':
+            continue
+
+        quantidade = row[mapa['quantidade']] if mapa['quantidade'] is not None and mapa['quantidade'] < len(row) else 0
+        preco_unitario = row[mapa['preco_unitario']] if mapa['preco_unitario'] is not None and mapa['preco_unitario'] < len(row) else 0
+        preco_total = row[mapa['preco_total']] if mapa['preco_total'] is not None and mapa['preco_total'] < len(row) else 0
+
+        # se não tiver preço total na planilha, calcula
+        quantidade_num = converter_numero(quantidade)
+        preco_unitario_num = converter_numero(preco_unitario)
+        preco_total_num = converter_numero(preco_total)
+
+        if preco_total_num == 0.0 and quantidade_num and preco_unitario_num:
+            preco_total_num = quantidade_num * preco_unitario_num
 
         item = {
-            'aba': ws.title,
-            'tipo_aba': 'contrato',
-            'codigo': codigo,
-            'descricao': descricao,
-            'unidade': unidade,
-            'quantidade': quantidade,
-            'preco_unitario': preco_unitario,
-            'preco_total': financeiro,
-            'observacao': observacao,
-            'marca': ''
+            'aba': limpar_texto(row[mapa['aba']]) if mapa['aba'] is not None and mapa['aba'] < len(row) else ws.title,
+            'tipo_aba': limpar_texto(row[mapa['tipo_aba']]) if mapa['tipo_aba'] is not None and mapa['tipo_aba'] < len(row) else detectar_tipo_aba(ws),
+            'codigo': limpar_texto(codigo),
+            'descricao': limpar_texto(descricao),
+            'unidade': limpar_texto(row[mapa['unidade']]) if mapa['unidade'] is not None and mapa['unidade'] < len(row) else '',
+            'quantidade': quantidade_num,
+            'observacao': limpar_texto(row[mapa['observacao']]) if mapa['observacao'] is not None and mapa['observacao'] < len(row) else '',
+            'marca': limpar_texto(row[mapa['marca']]) if mapa['marca'] is not None and mapa['marca'] < len(row) else '',
+            'preco_unitario': preco_unitario_num,
+            'preco_total': preco_total_num,
         }
 
-        if item['codigo'] or item['descricao']:
-            itens.append(item)
+        itens.append(item)
 
     return cabecalho, itens
+
+
+def extrair_aba_contrato(ws):
+    # agora contrato usa a mesma lógica genérica baseada em cabeçalho
+    return extrair_aba_medicao_consolidada(ws)
 
 
 def extrair_aba_iluminacao(ws):
-    cabecalho = extrair_cabecalho_padrao(ws)
-    itens = []
-
-    for row in ws.iter_rows(min_row=15, max_row=ws.max_row, values_only=True):
-        codigo = row[0] if len(row) > 0 else None
-        descricao = limpar_texto(row[1]) if len(row) > 1 else ''
-        marca = limpar_texto(row[2]) if len(row) > 2 else ''
-        unidade = limpar_texto(row[3]) if len(row) > 3 else ''
-        quantidade = limpar_numero(row[4]) if len(row) > 4 else 0.0
-        preco_unitario = limpar_numero(row[5]) if len(row) > 5 else 0.0
-        preco_total = limpar_numero(row[6]) if len(row) > 6 else 0.0
-
-        if not codigo and not descricao:
-            continue
-
-        item = {
-            'aba': ws.title,
-            'tipo_aba': 'iluminacao',
-            'codigo': str(codigo).strip() if codigo is not None else '',
-            'descricao': descricao,
-            'unidade': unidade,
-            'quantidade': quantidade,
-            'observacao': '',
-            'marca': marca,
-            'preco_unitario': preco_unitario,
-            'preco_total': preco_total
-        }
-
-        itens.append(item)
-
-    return cabecalho, itens
+    return extrair_aba_medicao_consolidada(ws)
 
 
 def extrair_aba_erosao(ws):
-    cabecalho = extrair_cabecalho_padrao(ws)
-    itens = []
-
-    for row in ws.iter_rows(min_row=17, max_row=ws.max_row, values_only=True):
-        codigo = limpar_texto(row[1]) if len(row) > 1 else ''
-        especificacao = limpar_texto(row[2]) if len(row) > 2 else ''
-        unidade = limpar_texto(row[7]) if len(row) > 7 else ''
-        volume = limpar_numero(row[8]) if len(row) > 8 else 0.0
-        descricao_extra = limpar_texto(row[9]) if len(row) > 9 else ''
-
-        if not codigo and not especificacao and not unidade and volume == 0:
-            continue
-
-        item = {
-            'aba': ws.title,
-            'tipo_aba': 'erosao',
-            'codigo': codigo,
-            'descricao': especificacao,
-            'unidade': unidade,
-            'quantidade': volume,
-            'observacao': descricao_extra,
-            'marca': '',
-            'preco_unitario': 0.0,
-            'preco_total': 0.0
-        }
-
-        if item['descricao'] or item['codigo']:
-            itens.append(item)
-
-    return cabecalho, itens
+    return extrair_aba_medicao_consolidada(ws)
 
 
 def extrair_aba_cbuq(ws):
-    cabecalho = extrair_cabecalho_padrao(ws)
-    itens = []
-
-    for row in ws.iter_rows(min_row=18, max_row=ws.max_row, values_only=True):
-        data = limpar_texto(row[1]) if len(row) > 1 else ''
-        lado = limpar_texto(row[2]) if len(row) > 2 else ''
-        km = limpar_texto(row[6]) if len(row) > 6 else ''
-        comprimento = limpar_numero(row[7]) if len(row) > 7 else 0.0
-        largura = limpar_numero(row[8]) if len(row) > 8 else 0.0
-        espessura = limpar_numero(row[9]) if len(row) > 9 else 0.0
-        area = limpar_numero(row[10]) if len(row) > 10 else 0.0
-        volume = limpar_numero(row[11]) if len(row) > 11 else 0.0
-
-        if not data and not lado and not km and area == 0 and volume == 0:
-            continue
-
-        item = {
-            'aba': ws.title,
-            'tipo_aba': 'cbuq',
-            'codigo': '',
-            'descricao': 'CBUQ executado',
-            'unidade': 'm³',
-            'quantidade': volume,
-            'observacao': f'Data: {data} | Lado: {lado} | KM: {km} | Comp: {comprimento} | Larg: {largura} | Esp: {espessura} | Área: {area}',
-            'marca': '',
-            'preco_unitario': 0.0,
-            'preco_total': 0.0
-        }
-
-        itens.append(item)
-
-    return cabecalho, itens
+    return extrair_aba_medicao_consolidada(ws)
 
 
 def extrair_medicao(arquivo):
@@ -286,17 +239,22 @@ def extrair_medicao(arquivo):
         'resumo'
     ]
 
+    todos_itens = []
+
     # 1. tenta achar primeiro a aba principal
     for ws in wb.worksheets:
         titulo = ws.title.strip().lower()
 
         if any(nome in titulo for nome in nomes_prioritarios):
-            cabecalho, itens = extrair_aba_contrato(ws)
-            return cabecalho or {}, itens
+            cabecalho, itens = extrair_aba_medicao_consolidada(ws)
+
+            if cabecalho:
+                cabecalho_geral = cabecalho
+
+            if itens:
+                return cabecalho_geral or {}, itens
 
     # 2. se não achar, cai no comportamento antigo
-    todos_itens = []
-
     for ws in wb.worksheets:
         tipo = detectar_tipo_aba(ws)
 
