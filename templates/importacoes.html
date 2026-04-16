@@ -130,7 +130,7 @@
         <!-- FORMULÁRIO DE UPLOAD -->
         <form method="POST" enctype="multipart/form-data">
             <label for="arquivo">Selecione a planilha:</label><br><br>
-            <input type="file" name="arquivo" id="arquivo" accept=".xlsx,.xls,.csv" required>
+            <input type="file" id="arquivo" name="arquivo" accept=".xlsx" required>
             <br><br>
             <button type="submit">Enviar planilha</button>
         </form>
@@ -144,8 +144,8 @@
         {% if nome_arquivo and total_itens > 0 %}
             <br>
             <form method="POST" action="{{ url_for('salvar_medicao') }}" enctype="multipart/form-data">
-                <label><strong>Selecione a obra:</strong></label><br><br>
-                <select name="obra_id" required>
+                <label for="obra_id"><strong>Selecione a obra:</strong></label><br><br>
+                <select name="obra_id" id="obra_id" required>
                     <option value="">Selecione...</option>
                     {% for obra in obras %}
                         <option value="{{ obra.id }}">
@@ -157,7 +157,7 @@
                 <br><br>
 
                 <p style="color:orange;">
-                    Para salvar, selecione novamente a planilha:
+                    Para salvar no banco, selecione novamente a planilha:
                 </p>
 
                 <input type="file" name="arquivo" accept=".xlsx" required>
@@ -193,26 +193,26 @@
             <h2>Prévia da planilha por aba</h2>
 
             <div class="abas-container">
-                {% for aba in abas %}
+                {% for nome_aba in abas %}
                     <button
                         type="button"
-                        class="aba-botao {% if aba == aba_ativa %}ativa{% endif %}"
-                        onclick='mostrarAba({{ aba|tojson }}, this)'>
-                        {{ aba }}
+                        class="aba-botao {% if nome_aba == aba_ativa %}ativa{% endif %}"
+                        onclick='mostrarAba({{ nome_aba|tojson }}, this)'>
+                        {{ nome_aba }}
                     </button>
                 {% endfor %}
             </div>
 
-            {% for aba, itens in abas_dados.items() %}
+            {% for nome_aba, itens_aba in abas_dados.items() %}
                 <div
                     id="aba-{{ loop.index }}"
-                    class="aba-conteudo {% if aba == aba_ativa %}ativa{% endif %}"
-                    data-nome="{{ aba }}">
+                    class="aba-conteudo {% if nome_aba == aba_ativa %}ativa{% endif %}"
+                    data-nome="{{ nome_aba }}">
 
-                    <h3>{{ aba }}</h3>
-                    <p><strong>Total de itens nesta aba:</strong> {{ itens|length }}</p>
+                    <h3>{{ nome_aba }}</h3>
+                    <p><strong>Total de itens nesta aba:</strong> {{ itens_aba|length }}</p>
 
-                    {% if itens %}
+                    {% if itens_aba %}
                         <div class="tabela-scroll">
                             <table>
                                 <thead>
@@ -230,27 +230,31 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                        {% for aba, itens_aba in abas_dados.items() %}
-                            {% set aba_idx = loop.index %}
-
-                            {% for item in itens_aba %}
-                            <tr class="linha-aba linha-{{ aba_idx }}" {% if loop.index > 50 %}style="display:none;"{% endif %}>
-                               <td>{{ item.codigo or '' }}</td>
-                               <td>{{ item.descricao or '' }}</td>
-                               <td>{{ item.unidade or '' }}</td>
-                               <td>{{ item.quantidade or '' }}</td>
-                               <td>{{ item.preco_unitario or '' }}</td>
-                               <td>{{ item.total or '' }}</td>
-                            </tr>
-                            {% endfor %}
-                       {% endfor %}
+                                    {% for item in itens_aba %}
+                                        <tr class="linha-aba linha-{{ loop.parent.index }}" {% if loop.index > 50 %}style="display:none;"{% endif %}>
+                                            <td>{{ item.aba or '' }}</td>
+                                            <td>{{ item.tipo or '' }}</td>
+                                            <td>{{ item.codigo or '' }}</td>
+                                            <td>{{ item.descricao or '' }}</td>
+                                            <td>{{ item.unidade or '' }}</td>
+                                            <td>{{ item.quantidade or '' }}</td>
+                                            <td>{{ item.preco_unitario or '' }}</td>
+                                            <td>{{ item.total or '' }}</td>
+                                            <td>{{ item.marca or '' }}</td>
+                                            <td>{{ item.observacao or '' }}</td>
+                                        </tr>
+                                    {% endfor %}
                                 </tbody>
                             </table>
                         </div>
 
-                        {% if itens|length > 50 %}
+                        {% if itens_aba|length > 50 %}
                             <br>
-                            <p><strong>Mostrando:</strong> <span id="contador-{{ loop.index }}">50</span> de {{ itens|length }} itens</p>
+                            <p>
+                                <strong>Mostrando:</strong>
+                                <span id="contador-{{ loop.index }}">50</span>
+                                de {{ itens_aba|length }} itens
+                            </p>
                             <button type="button" id="btn-{{ loop.index }}" onclick="mostrarMais({{ loop.index }})">
                                 Ver mais desta aba
                             </button>
