@@ -4,6 +4,101 @@
     <meta charset="UTF-8">
     <title>Importações</title>
     <link rel="stylesheet" href="/static/style2.css">
+    <style>
+        .abas-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .aba-botao {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            background-color: #444;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .aba-botao:hover {
+            background-color: #666;
+        }
+
+        .aba-botao.ativa {
+            background-color: orange;
+            color: black;
+        }
+
+        .aba-conteudo {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .aba-conteudo.ativa {
+            display: block;
+        }
+
+        .tabela-scroll {
+            overflow-x: auto;
+            max-width: 100%;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: auto;
+            color: white;
+        }
+
+        th, td {
+            border: 1px solid #777;
+            padding: 8px;
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        th {
+            background-color: rgba(255, 166, 0, 0.3);
+        }
+
+        .resumo-box {
+            color: white;
+            text-align: left;
+            max-width: 900px;
+            margin: auto;
+        }
+
+        .mensagens-flash {
+            max-width: 900px;
+            margin: 20px auto;
+            text-align: left;
+        }
+
+        .mensagem {
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+
+        .success {
+            background-color: rgba(0, 128, 0, 0.25);
+            color: #d4ffd4;
+        }
+
+        .warning {
+            background-color: rgba(255, 165, 0, 0.25);
+            color: #ffe7b3;
+        }
+
+        .danger {
+            background-color: rgba(255, 0, 0, 0.25);
+            color: #ffd4d4;
+        }
+    </style>
 </head>
 <body>
 
@@ -20,6 +115,18 @@
     <div class="inicio-login">
         <h1>Importações</h1>
 
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="mensagens-flash">
+                    {% for categoria, mensagem in messages %}
+                        <div class="mensagem {{ categoria }}">
+                            {{ mensagem }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
         <!-- FORMULÁRIO DE UPLOAD -->
         <form method="POST" enctype="multipart/form-data">
             <label for="arquivo">Selecione a planilha:</label><br><br>
@@ -34,7 +141,7 @@
         {% endif %}
 
         <!-- FORMULÁRIO DE SALVAR -->
-        {% if nome_arquivo and dados %}
+        {% if nome_arquivo and total_itens > 0 %}
             <br>
             <form method="POST" action="{{ url_for('salvar_medicao') }}" enctype="multipart/form-data">
                 <label><strong>Selecione a obra:</strong></label><br><br>
@@ -67,9 +174,9 @@
             <hr>
             <h2>Resumo da Medição</h2>
 
-            <div style="color:white; text-align:left; max-width:900px; margin:auto;">
+            <div class="resumo-box">
                 {% for chave, valor in cabecalho.items() %}
-                    <p><strong>{{ chave|capitalize }}:</strong> {{ valor }}</p>
+                    <p><strong>{{ chave|replace('_', ' ')|title }}:</strong> {{ valor }}</p>
                 {% endfor %}
             </div>
         {% endif %}
@@ -78,55 +185,116 @@
         {% if total_itens %}
             <hr>
             <p><strong>Total de itens encontrados:</strong> {{ total_itens }}</p>
-            <p><strong>Mostrando:</strong> <span id="contador">50</span> itens</p>
         {% endif %}
 
-        <!-- TABELA -->
-        {% if dados %}
+        <!-- ABAS -->
+        {% if abas and abas_dados %}
             <hr>
-            <h2>Prévia da planilha</h2>
+            <h2>Prévia da planilha por aba</h2>
 
-            <div style="overflow-x:auto; max-width:100%;">
-                <table border="1" style="color:white; margin:auto; border-collapse:collapse;">
-                    <tr>
-                        {% for coluna in dados[0].keys() %}
-                            <th style="padding:8px;">{{ coluna }}</th>
-                        {% endfor %}
-                    </tr>
-
-                    {% for linha in dados %}
-                        <tr class="linha-dado" {% if loop.index > 50 %}style="display:none;"{% endif %}>
-                            {% for valor in linha.values() %}
-                                <td style="padding:8px;">{{ valor }}</td>
-                            {% endfor %}
-                        </tr>
-                    {% endfor %}
-                </table>
+            <div class="abas-container">
+                {% for aba in abas %}
+                    <button
+                        type="button"
+                        class="aba-botao {% if aba == aba_ativa %}ativa{% endif %}"
+                        onclick="mostrarAba('{{ aba|replace(\"'\", \"\\'\") }}', this)">
+                        {{ aba }}
+                    </button>
+                {% endfor %}
             </div>
 
-            <br>
+            {% for aba, itens in abas_dados.items() %}
+                <div
+                    id="aba-{{ loop.index }}"
+                    class="aba-conteudo {% if aba == aba_ativa %}ativa{% endif %}"
+                    data-nome="{{ aba }}">
 
-            {% if total_itens > 50 %}
-                <button type="button" onclick="mostrarMais()" id="btnMostrar">
-                    Ver mais
-                </button>
-            {% endif %}
+                    <h3>{{ aba }}</h3>
+                    <p><strong>Total de itens nesta aba:</strong> {{ itens|length }}</p>
+
+                    {% if itens %}
+                        <div class="tabela-scroll">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Aba</th>
+                                        <th>Tipo</th>
+                                        <th>Código</th>
+                                        <th>Descrição</th>
+                                        <th>Unidade</th>
+                                        <th>Quantidade</th>
+                                        <th>Preço Unitário</th>
+                                        <th>Preço Total</th>
+                                        <th>Marca</th>
+                                        <th>Observação</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in itens %}
+                                        <tr class="linha-aba linha-{{ loop.parent.loop.index }}" {% if loop.index > 50 %}style="display:none;"{% endif %}>
+                                            <td>{{ item.get('aba', '') }}</td>
+                                            <td>{{ item.get('tipo_aba', '') }}</td>
+                                            <td>{{ item.get('codigo', '') }}</td>
+                                            <td>{{ item.get('descricao', '') }}</td>
+                                            <td>{{ item.get('unidade', '') }}</td>
+                                            <td>{{ item.get('quantidade', '') }}</td>
+                                            <td>{{ item.get('preco_unitario', '') }}</td>
+                                            <td>{{ item.get('preco_total', '') }}</td>
+                                            <td>{{ item.get('marca', '') }}</td>
+                                            <td>{{ item.get('observacao', '') }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {% if itens|length > 50 %}
+                            <br>
+                            <p><strong>Mostrando:</strong> <span id="contador-{{ loop.index }}">50</span> de {{ itens|length }} itens</p>
+                            <button type="button" id="btn-{{ loop.index }}" onclick="mostrarMais({{ loop.index }})">
+                                Ver mais desta aba
+                            </button>
+                        {% endif %}
+                    {% else %}
+                        <p>Nenhum item encontrado nesta aba.</p>
+                    {% endif %}
+                </div>
+            {% endfor %}
         {% endif %}
     </div>
 
     <script>
-        function mostrarMais() {
-            const linhas = document.querySelectorAll('.linha-dado');
+        function mostrarAba(nomeAba, botaoClicado) {
+            const conteudos = document.querySelectorAll('.aba-conteudo');
+            const botoes = document.querySelectorAll('.aba-botao');
 
-            linhas.forEach((linha) => {
-                if (linha.style.display === 'none') {
-                    linha.style.display = '';
+            conteudos.forEach(div => {
+                if (div.dataset.nome === nomeAba) {
+                    div.classList.add('ativa');
+                } else {
+                    div.classList.remove('ativa');
                 }
             });
 
-            document.getElementById('contador').innerText = linhas.length;
+            botoes.forEach(botao => botao.classList.remove('ativa'));
+            botaoClicado.classList.add('ativa');
+        }
 
-            const botao = document.getElementById('btnMostrar');
+        function mostrarMais(indiceAba) {
+            const linhas = document.querySelectorAll('.linha-' + indiceAba);
+            let total = 0;
+
+            linhas.forEach((linha) => {
+                linha.style.display = '';
+                total++;
+            });
+
+            const contador = document.getElementById('contador-' + indiceAba);
+            if (contador) {
+                contador.innerText = total;
+            }
+
+            const botao = document.getElementById('btn-' + indiceAba);
             if (botao) {
                 botao.style.display = 'none';
             }

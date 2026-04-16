@@ -12,7 +12,7 @@ from services.importador_medicao import extrair_medicao
 app = Flask(__name__)
 app.secret_key = 'segredo123'
 
-senha = urllib.parse.quote_plus("1A2b3c4d.")
+senha = urllib.parse.quote_plus("SUA_SENHA_AQUI")
 
 app.config['SQLALCHEMY_DATABASE_URI'] = f'postgresql://joao:{senha}@34.39.230.118:5432/diario_obra'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -39,7 +39,6 @@ def to_float(valor, padrao=0.0):
     texto = str(valor).strip()
     texto = texto.replace('R$', '').replace(' ', '')
 
-    # Se vier no formato brasileiro 1.234,56
     if ',' in texto:
         texto = texto.replace('.', '').replace(',', '.')
 
@@ -118,12 +117,12 @@ class ItemMedicao(db.Model):
     tipo_aba = db.Column(db.String(50), nullable=True)
 
     codigo = db.Column(db.String(50), nullable=True)
-    item = db.Column(db.Text, nullable=True)  # aqui guardamos a descrição
+    item = db.Column(db.Text, nullable=True)
     unidade = db.Column(db.String(50), nullable=True)
     quantidade = db.Column(db.Float, nullable=True)
 
-    preco = db.Column(db.Float, nullable=True)       # preço unitário
-    financeiro = db.Column(db.Float, nullable=True)  # preço total
+    preco = db.Column(db.Float, nullable=True)
+    financeiro = db.Column(db.Float, nullable=True)
 
     marca = db.Column(db.String(255), nullable=True)
     observacao = db.Column(db.Text, nullable=True)
@@ -152,11 +151,11 @@ def nivel_required(nivel_permitido):
         return wrap
     return decorator
 
+
 def ler_planilha_bruta(arquivo):
     import openpyxl
 
     wb = openpyxl.load_workbook(arquivo, data_only=True)
-
     abas = []
 
     for ws in wb.worksheets:
@@ -165,7 +164,7 @@ def ler_planilha_bruta(arquivo):
         for row in ws.iter_rows(values_only=True):
             linha = []
             for cell in row:
-                linha.append(str(cell) if cell else '')
+                linha.append(str(cell) if cell is not None else '')
             dados.append(linha)
 
         abas.append({
@@ -196,11 +195,11 @@ def login():
 
         if user.nivel == 'admin':
             return redirect(url_for('dashboard'))
-        elif user.nivel == 'engenheiro':
+        if user.nivel == 'engenheiro':
             return redirect(url_for('minha_obra'))
-        else:
-            session.clear()
-            return "Nível de usuário inválido", 400
+
+        session.clear()
+        return "Nível de usuário inválido", 400
 
     return "Login inválido", 401
 
@@ -522,6 +521,14 @@ def importacoes():
                     cabecalho = cabecalho or {}
                     total_itens = len(itens)
 
+                    # Separar abas
+                    abas = sorted({
+                        str(item.get('aba')).strip()
+                        for item in itens
+                        if item.get('aba')
+                    })
+
+                    # Organizar dados por aba (isso é MUITO importante pro seu plano)
                     for item in itens:
                         nome_aba = str(item.get('aba')).strip() if item.get('aba') else 'Sem aba'
 
@@ -530,13 +537,9 @@ def importacoes():
 
                         abas_dados[nome_aba].append(item)
 
-                    abas = sorted(abas_dados.keys())
-
+                    # Define primeira aba como ativa
                     if abas:
                         aba_ativa = abas[0]
-                        dados = abas_dados[aba_ativa]
-                    else:
-                        dados = []
 
                     if total_itens == 0:
                         flash('Nenhum item válido encontrado na planilha.', 'warning')
@@ -549,7 +552,7 @@ def importacoes():
                 except Exception as e:
                     flash(f'Erro ao processar planilha: {str(e)}', 'danger')
 
-        return render_template(
+    return render_template(
         'importacoes.html',
         abas=abas,
         abas_dados=abas_dados,
@@ -560,9 +563,8 @@ def importacoes():
         cabecalho=cabecalho,
         total_itens=total_itens
     )
-    
-    
 
+    
 
 @app.route('/salvar-medicao', methods=['POST'])
 @login_required
@@ -589,7 +591,6 @@ def salvar_medicao():
 
         obra_id = request.form.get('obra_id')
 
-        # se o usuário for engenheiro, usa a obra vinculada caso o form não mande obra_id
         if not obra_id and session.get('nivel') == 'engenheiro':
             obra_id = session.get('obra_id')
 
@@ -658,15 +659,16 @@ def medicoes():
         query = query.filter_by(obra_id=obra_id)
 
     medicoes = query.order_by(Medicao.id.desc()).all()
-
     ids_medicoes = [m.id for m in medicoes]
-
     total_medicoes = len(medicoes)
 
     if ids_medicoes:
         total_itens = ItemMedicao.query.filter(ItemMedicao.medicao_id.in_(ids_medicoes)).count()
-        soma_total = db.session.query(db.func.sum(ItemMedicao.financeiro))\
-            .filter(ItemMedicao.medicao_id.in_(ids_medicoes)).scalar() or 0
+        soma_total = (
+            db.session.query(db.func.sum(ItemMedicao.financeiro))
+            .filter(ItemMedicao.medicao_id.in_(ids_medicoes))
+            .scalar() or 0
+        )
     else:
         total_itens = 0
         soma_total = 0
@@ -679,14 +681,14 @@ def medicoes():
         soma_total=soma_total
     )
 
+
 @app.route('/medicao/<int:id>')
 @login_required
 def ver_medicao(id):
     medicao = Medicao.query.get_or_404(id)
 
-    if session.get('nivel') != 'admin':
-        if medicao.obra_id != session.get('obra_id'):
-            return "Acesso negado", 403
+    if session.get('nivel') != 'admin' and medicao.obra_id != session.get('obra_id'):
+        return "Acesso negado", 403
 
     itens = ItemMedicao.query.filter_by(medicao_id=id).all()
 
@@ -698,4 +700,4 @@ def ver_medicao(id):
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000, debug=True)
