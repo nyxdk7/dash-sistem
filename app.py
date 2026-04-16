@@ -448,5 +448,59 @@ def importacoes():
         total_itens=total_itens
     )
 
+@app.route('/salvar-medicao', methods=['POST'])
+@login_required
+def salvar_medicao():
+    arquivo = request.files.get('arquivo')
+
+    if not arquivo or not arquivo.filename:
+        return "Nenhum arquivo enviado"
+
+    if not arquivo.filename.endswith('.xlsx'):
+        return "Apenas arquivos .xlsx são suportados"
+
+    try:
+        cabecalho, itens = extrair_medicao(arquivo)
+
+        obra_id = session.get('obra_id')
+
+        # se for admin sem obra vinculada, bloqueia por enquanto
+        if not obra_id:
+            return "Usuário sem obra vinculada"
+
+        nova_medicao = Medicao(
+            nome_arquivo=arquivo.filename,
+            obra_id=obra_id,
+            usuario_id=session.get('user_id'),
+            processo=cabecalho.get('processo'),
+            rodovia=cabecalho.get('rodovia'),
+            trecho=cabecalho.get('trecho'),
+            subtrecho=cabecalho.get('subtrecho'),
+            periodo=cabecalho.get('periodo'),
+            medicao=cabecalho.get('medicao')
+        )
+
+        db.session.add(nova_medicao)
+        db.session.flush()
+
+        for item in itens:
+            novo_item = ItemMedicao(
+                medicao_id=nova_medicao.id,
+                codigo=str(item.get('codigo')) if item.get('codigo') is not None else None,
+                item=str(item.get('item')) if item.get('item') is not None else None,
+                unidade=str(item.get('unidade')) if item.get('unidade') is not None else None,
+                quantidade=item.get('quantidade') if item.get('quantidade') is not None else 0,
+                preco=item.get('preco') if item.get('preco') is not None else 0,
+                financeiro=item.get('financeiro') if item.get('financeiro') is not None else 0
+            )
+            db.session.add(novo_item)
+
+        db.session.commit()
+        return redirect(url_for('importacoes'))
+
+    except Exception as e:
+        db.session.rollback()
+        return f"Erro ao salvar medição: {str(e)}"
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
