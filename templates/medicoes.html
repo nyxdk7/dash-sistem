@@ -37,6 +37,7 @@
                 <th>Arquivo</th>
                 <th>Obra</th>
                 <th>Data</th>
+                <th>Ações</th>
             </tr>
 
             {% for medicao in medicoes %}
@@ -48,6 +49,9 @@
                     {% if medicao.obra.lote %}- Lote {{ medicao.obra.lote }}{% endif %}
                 </td>
                 <td>{{ medicao.data_importacao.strftime('%d/%m/%Y %H:%M') }}</td>
+                <td>
+                    <a href="{{ url_for('ver_medicao', id=medicao.id) }}">Ver medição</a>
+                </td>
             </tr>
             {% endfor %}
         </table>
