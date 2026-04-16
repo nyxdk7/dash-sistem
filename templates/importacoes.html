@@ -32,10 +32,22 @@
             <p><strong>Arquivo recebido:</strong> {{ nome_arquivo }}</p>
         {% endif %}
 
-        <!-- BOTÃO DE SALVAR -->
+        <!-- FORMULÁRIO DE SALVAR -->
         {% if nome_arquivo and dados %}
             <br>
             <form method="POST" action="{{ url_for('salvar_medicao') }}" enctype="multipart/form-data">
+                <label><strong>Selecione a obra:</strong></label><br><br>
+                <select name="obra_id" required>
+                    <option value="">Selecione...</option>
+                    {% for obra in obras %}
+                        <option value="{{ obra.id }}">
+                            {{ obra.nome }} {% if obra.lote %}- Lote {{ obra.lote }}{% endif %}
+                        </option>
+                    {% endfor %}
+                </select>
+
+                <br><br>
+
                 <p style="color:orange;">
                     Para salvar, selecione novamente a planilha:
                 </p>

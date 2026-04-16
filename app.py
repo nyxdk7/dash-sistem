@@ -444,12 +444,16 @@ def importacoes():
             except Exception as e:
                 return f"Erro ao processar planilha: {str(e)}"
 
+    # 🔥 buscar obras
+    obras = Obra.query.all()
+
     return render_template(
         'importacoes.html',
         dados=dados,
         nome_arquivo=nome_arquivo,
         cabecalho=cabecalho,
-        total_itens=total_itens
+        total_itens=total_itens,
+        obras=obras  # 👈 faltava isso
     )
 
 @app.route('/salvar-medicao', methods=['POST'])
@@ -466,11 +470,11 @@ def salvar_medicao():
     try:
         cabecalho, itens = extrair_medicao(arquivo)
 
-        obra_id = session.get('obra_id')
+        obra_id = request.form.get('obra_id')
 
         # se for admin sem obra vinculada, bloqueia por enquanto
         if not obra_id:
-            return "Usuário sem obra vinculada"
+           return "Selecione uma obra"
 
         nova_medicao = Medicao(
             nome_arquivo=arquivo.filename,
