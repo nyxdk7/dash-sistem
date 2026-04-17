@@ -1,14 +1,10 @@
-from flask import Flask, render_template, request, redirect, session, url_for, flash
+from flask import Flask, render_template, request, redirect, session, url_for
 from functools import wraps
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
-from werkzeug.utils import secure_filename
 import urllib.parse
 from datetime import datetime
 from zoneinfo import ZoneInfo
-
-from importador_medicao import extrair_medicao
-
 
 app = Flask(__name__)
 app.secret_key = 'segredo123'
@@ -17,35 +13,12 @@ senha = urllib.parse.quote_plus("1A2b3c4d.")
 
 app.config['SQLALCHEMY_DATABASE_URI'] = f'postgresql://joao:{senha}@34.39.230.118:5432/diario_obra'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['MAX_CONTENT_LENGTH'] = 20 * 1024 * 1024  # 20 MB
 
 db = SQLAlchemy(app)
 
 
 def agora_br():
     return datetime.now(ZoneInfo("America/Sao_Paulo"))
-
-def arquivo_xlsx_valido(nome_arquivo):
-    return bool(nome_arquivo) and nome_arquivo.lower().endswith('.xlsx')
-
-
-def to_float(valor, padrao=0.0):
-    if valor is None or valor == '':
-        return padrao
-
-    if isinstance(valor, (int, float)):
-        return float(valor)
-
-    texto = str(valor).strip()
-    texto = texto.replace('R$', '').replace(' ', '')
-
-    if ',' in texto:
-        texto = texto.replace('.', '').replace(',', '.')
-
-    try:
-        return float(texto)
-    except ValueError:
-        return padrao
 
 
 class Obra(db.Model):
@@ -78,54 +51,6 @@ class DiarioObra(db.Model):
 
     usuario = db.relationship('Usuario')
     obra = db.relationship('Obra')
-
-
-class Medicao(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    nome_arquivo = db.Column(db.String(255), nullable=False)
-    data_importacao = db.Column(db.DateTime, default=agora_br, nullable=False)
-
-    obra_id = db.Column(db.Integer, db.ForeignKey('obra.id'), nullable=False)
-    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
-
-    processo = db.Column(db.String(255), nullable=True)
-    contrato = db.Column(db.String(255), nullable=True)
-    contratada = db.Column(db.String(255), nullable=True)
-    rodovia = db.Column(db.String(255), nullable=True)
-    trecho = db.Column(db.String(255), nullable=True)
-    subtrecho = db.Column(db.String(255), nullable=True)
-    segmento = db.Column(db.String(255), nullable=True)
-    periodo = db.Column(db.String(255), nullable=True)
-    periodo_acumulado = db.Column(db.String(255), nullable=True)
-    medicao = db.Column(db.String(255), nullable=True)
-
-    obra = db.relationship('Obra')
-    usuario = db.relationship('Usuario')
-    itens = db.relationship(
-        'ItemMedicao',
-        backref='medicao_rel',
-        lazy=True,
-        cascade='all, delete-orphan'
-    )
-
-
-class ItemMedicao(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    medicao_id = db.Column(db.Integer, db.ForeignKey('medicao.id'), nullable=False)
-
-    aba = db.Column(db.String(255), nullable=True)
-    tipo_aba = db.Column(db.String(50), nullable=True)
-
-    codigo = db.Column(db.String(50), nullable=True)
-    item = db.Column(db.Text, nullable=True)
-    unidade = db.Column(db.String(50), nullable=True)
-    quantidade = db.Column(db.Float, nullable=True)
-
-    preco = db.Column(db.Float, nullable=True)
-    financeiro = db.Column(db.Float, nullable=True)
-
-    marca = db.Column(db.String(255), nullable=True)
-    observacao = db.Column(db.Text, nullable=True)
 
 
 with app.app_context():
@@ -191,18 +116,11 @@ def dashboard():
     obras = Obra.query.all()
     registros = DiarioObra.query.order_by(DiarioObra.data_registro.desc()).limit(10).all()
 
-    total_medicoes = Medicao.query.count()
-    total_itens_medicao = ItemMedicao.query.count()
-    soma_total = db.session.query(db.func.sum(ItemMedicao.financeiro)).scalar() or 0
-
     return render_template(
         'dashboard.html',
         admin=True,
         obras=obras,
-        registros=registros,
-        total_medicoes=total_medicoes,
-        total_itens_medicao=total_itens_medicao,
-        soma_total=soma_total
+        registros=registros
     )
 
 
@@ -260,12 +178,6 @@ def minha_obra():
     return render_template('minha_obra.html', obra=obra, registros=registros)
 
 
-@app.route('/contratos')
-@login_required
-def contratos():
-    return render_template('contratos.html')
-
-
 @app.route('/logout')
 @login_required
 def logout():
@@ -309,24 +221,21 @@ def admin():
     return render_template('admin.html', usuarios=usuarios, obras=obras)
 
 
-@app.route('/obra/nova', methods=['GET', 'POST'])
+@app.route('/obra/nova', methods=['POST'])
 @login_required
 @nivel_required('admin')
 def nova_obra():
-    if request.method == 'POST':
-        nome = request.form.get('nome', '').strip()
-        lote = request.form.get('lote', '').strip()
+    nome = request.form.get('nome', '').strip()
+    lote = request.form.get('lote', '').strip()
 
-        if not nome:
-            return "Informe o nome da obra", 400
+    if not nome:
+        return "Informe o nome da obra", 400
 
-        obra = Obra(nome=nome, lote=lote if lote else None)
-        db.session.add(obra)
-        db.session.commit()
+    obra = Obra(nome=nome, lote=lote if lote else None)
+    db.session.add(obra)
+    db.session.commit()
 
-        return redirect(url_for('admin'))
-
-    return render_template('nova_obra.html')
+    return redirect(url_for('admin'))
 
 
 @app.route('/admin/vincular-obra/<int:user_id>', methods=['POST'])
@@ -469,212 +378,6 @@ def editar_registro(id):
         'editar_registro.html',
         registro=registro,
         efetivo_formatado=efetivo_formatado
-    )
-
-
-@app.route('/importacoes', methods=['GET', 'POST'])
-@login_required
-def importacoes():
-    dados = []
-    nome_arquivo = None
-    cabecalho = {}
-    total_itens = 0
-    obras = Obra.query.all()
-    abas = []
-    abas_dados = {}
-    aba_ativa = None
-
-    if request.method == 'POST':
-        arquivo = request.files.get('arquivo')
-
-        if not arquivo or not arquivo.filename:
-            flash('Selecione um arquivo .xlsx para importar.', 'warning')
-            return render_template(
-                'importacoes.html',
-                dados=dados,
-                nome_arquivo=nome_arquivo,
-                cabecalho=cabecalho,
-                total_itens=total_itens,
-                obras=obras,
-                abas=abas,
-                abas_dados=abas_dados,
-                aba_ativa=aba_ativa
-            )
-
-        nome_arquivo = secure_filename(arquivo.filename)
-
-        if not arquivo_xlsx_valido(nome_arquivo):
-            flash('Apenas arquivos .xlsx são suportados.', 'danger')
-        else:
-            try:
-                cabecalho, itens = extrair_medicao(arquivo)
-                cabecalho = cabecalho or {}
-                dados = itens or []
-                total_itens = len(dados)
-
-                for item in dados:
-                    nome_aba = str(item.get('aba') or 'Sem aba').strip()
-                    if nome_aba not in abas_dados:
-                        abas_dados[nome_aba] = []
-                    abas_dados[nome_aba].append(item)
-
-                abas = list(abas_dados.keys())
-                aba_ativa = abas[0] if abas else None
-
-                if total_itens == 0:
-                    flash('Nenhum item válido encontrado na planilha.', 'warning')
-                else:
-                    flash(f'Planilha carregada com sucesso. {total_itens} itens encontrados.', 'success')
-
-            except Exception as e:
-                flash(f'Erro ao processar a planilha: {str(e)}', 'danger')
-
-    return render_template(
-        'importacoes.html',
-        dados=dados,
-        nome_arquivo=nome_arquivo,
-        cabecalho=cabecalho,
-        total_itens=total_itens,
-        obras=obras,
-        abas=abas,
-        abas_dados=abas_dados,
-        aba_ativa=aba_ativa
-    )
-
-
-@app.route('/medicao-consolidada', methods=['GET', 'POST'])
-@login_required
-def medicao_consolidada():
-    return redirect(url_for('importacoes'))
-
-
-@app.route('/salvar-medicao', methods=['POST'])
-@login_required
-def salvar_medicao():
-    obra_id = request.form.get('obra_id')
-    arquivo = request.files.get('arquivo')
-
-    if not obra_id and session.get('nivel') == 'engenheiro':
-        obra_id = session.get('obra_id')
-
-    if not obra_id:
-        flash('Selecione uma obra.', 'warning')
-        return redirect(url_for('importacoes'))
-
-    if not arquivo or not arquivo.filename:
-        flash('Selecione novamente a planilha antes de salvar.', 'warning')
-        return redirect(url_for('importacoes'))
-
-    nome_arquivo = secure_filename(arquivo.filename)
-
-    if not arquivo_xlsx_valido(nome_arquivo):
-        flash('Apenas arquivos .xlsx são suportados.', 'danger')
-        return redirect(url_for('importacoes'))
-
-    try:
-        cabecalho, itens = extrair_medicao(arquivo)
-        cabecalho = cabecalho or {}
-
-        if not itens:
-            flash('Nenhum item válido foi encontrado na planilha.', 'warning')
-            return redirect(url_for('importacoes'))
-
-        nova_medicao = Medicao(
-            nome_arquivo=nome_arquivo,
-            obra_id=int(obra_id),
-            usuario_id=session.get('user_id'),
-            processo=cabecalho.get('processo'),
-            contrato=cabecalho.get('contrato'),
-            contratada=cabecalho.get('contratada'),
-            rodovia=cabecalho.get('rodovia'),
-            trecho=cabecalho.get('trecho'),
-            subtrecho=cabecalho.get('sub_trecho'),
-            segmento=cabecalho.get('segmento'),
-            periodo=cabecalho.get('periodo'),
-            periodo_acumulado=cabecalho.get('periodo_acumulado'),
-            medicao=cabecalho.get('medicao')
-        )
-
-        db.session.add(nova_medicao)
-        db.session.flush()
-
-        novos_itens = []
-
-        for item in itens:
-            novo_item = ItemMedicao(
-                medicao_id=nova_medicao.id,
-                aba=str(item.get('aba')).strip() if item.get('aba') is not None else None,
-                tipo_aba=str(item.get('tipo_aba')).strip() if item.get('tipo_aba') is not None else None,
-                codigo=str(item.get('codigo')).strip() if item.get('codigo') is not None else None,
-                item=str(item.get('descricao')).strip() if item.get('descricao') is not None else None,
-                unidade=str(item.get('unidade')).strip() if item.get('unidade') is not None else None,
-                quantidade=to_float(item.get('quantidade'), 0),
-                preco=to_float(item.get('preco_unitario'), 0),
-                financeiro=to_float(item.get('preco_total'), 0),
-                marca=str(item.get('marca')).strip() if item.get('marca') is not None else None,
-                observacao=str(item.get('observacao')).strip() if item.get('observacao') is not None else None
-            )
-            novos_itens.append(novo_item)
-
-        db.session.bulk_save_objects(novos_itens)
-        db.session.commit()
-
-        flash(f'Medição salva com sucesso. {len(novos_itens)} itens gravados.', 'success')
-        return redirect(url_for('medicoes'))
-
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Erro ao salvar medição: {str(e)}', 'danger')
-        return redirect(url_for('importacoes'))
-
-
-@app.route('/medicoes')
-@login_required
-def medicoes():
-    query = Medicao.query
-
-    if session.get('nivel') != 'admin':
-        obra_id = session.get('obra_id')
-        query = query.filter_by(obra_id=obra_id)
-
-    medicoes = query.order_by(Medicao.id.desc()).all()
-    ids_medicoes = [m.id for m in medicoes]
-    total_medicoes = len(medicoes)
-
-    if ids_medicoes:
-        total_itens = ItemMedicao.query.filter(ItemMedicao.medicao_id.in_(ids_medicoes)).count()
-        soma_total = (
-            db.session.query(db.func.sum(ItemMedicao.financeiro))
-            .filter(ItemMedicao.medicao_id.in_(ids_medicoes))
-            .scalar() or 0
-        )
-    else:
-        total_itens = 0
-        soma_total = 0
-
-    return render_template(
-        'medicoes.html',
-        medicoes=medicoes,
-        total_medicoes=total_medicoes,
-        total_itens=total_itens,
-        soma_total=soma_total
-    )
-
-
-@app.route('/medicao/<int:id>')
-@login_required
-def ver_medicao(id):
-    medicao = Medicao.query.get_or_404(id)
-
-    if session.get('nivel') != 'admin' and medicao.obra_id != session.get('obra_id'):
-        return "Acesso negado", 403
-
-    itens = ItemMedicao.query.filter_by(medicao_id=id).all()
-
-    return render_template(
-        'ver_medicao.html',
-        medicao=medicao,
-        itens=itens
     )
 
 
