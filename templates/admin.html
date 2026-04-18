@@ -11,7 +11,6 @@
     <div class="navegacao">
         <nav>
             <a href="{{ url_for('dashboard') }}">DASHBOARD</a>
-            <a href="{{ url_for('medicoes') }}">MEDIÇÕES</a>
             <a href="{{ url_for('admin') }}">ADMIN</a>
             <a href="{{ url_for('logout') }}">SAIR</a>
         </nav>
@@ -23,6 +22,7 @@
         <h2>Resumo</h2>
         <p>Total de usuários: {{ usuarios|length }}</p>
         <p>Total de obras: {{ obras|length }}</p>
+        <a href="/cadastro">CADASTRAR NOVO USUÁRIO</a>
 
         <hr>
 

@@ -1,5 +1,5 @@
 body {
-    background-image: url(/static/images/pavimento.jpg);
+    background-image: url(/static/images/fundo-azul.jpg);
     background-size: cover;
     margin: 0;
     display: flex;
@@ -11,7 +11,7 @@ body {
 
 .navegacao nav {
     text-align: center;
-    background-color: rgba(255, 166, 0, 0.709);
+    background-color: rgba(0, 47, 255, 0.753);
     padding: 18px;
 }
 
@@ -39,7 +39,7 @@ body {
     color: white;
     font-family: sans-serif;
     text-align: center;
-    background-color: rgba(0, 0, 0, 0.415);
+    background-color: rgba(38, 0, 255, 0.137);
     padding:60px;
 }
 

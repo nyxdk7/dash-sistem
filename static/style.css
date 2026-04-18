@@ -1,7 +1,7 @@
 /* CORPO DO CODIGO */
 
 body {
-    background-image: url(/static/images/pedreira.jpg);
+    background-image: url(/static/images/fundo-azul.jpg);
     background-size: cover;
     margin: 0;
     display: flex;
@@ -11,12 +11,13 @@ body {
 
 .rodape {
     margin-top: auto;
-    padding: 20px;
+    padding: 10px;
     text-align: center;
     font-family: Arial, Helvetica, sans-serif;
-    background-color: rgba(0, 0, 0, 0.419);
+    background-color: rgba(0, 0, 0, 0.164);
     color: white;
     width: 100%;
+    height: 45px;
 
     display: flex;
     justify-content: center;
@@ -41,15 +42,22 @@ body {
     height: 60px;
     width: auto;
     display: block;
+    transition: 300ms;
+}
+
+.logo-rodape:hover {
+    height: 65px;
+    width: auto;
+    animation: girar 3s ease-in-out;
 }
 
 /*CORPO DA TELA DE LOGIN */
 
 .container-login {
 
-    background: linear-gradient(135deg, #ff7818c0, #ffb247aa);
+    background: linear-gradient(135deg, #00042cda, #1100ff8e);
     border-radius: 20px;
-    height: 250px;
+    height: 350px;
     width: 500px;
     margin: auto;
 
@@ -86,8 +94,31 @@ body {
     padding: 20px;
     width: 300px;
     border-radius: 30px;
-    background-color: rgb(255, 166, 0);
+    background-color: rgb(255, 255, 255);
     font-size: 15px;
+}
+
+.login-user p {
+    text-decoration: none;
+    color: rgba(255, 255, 255, 0.342);
+    font-size: 14px;
+    transition: 300ms;
+    width: 600px;
+    
+}
+
+.login-user p:hover {
+    color: rgba(255, 255, 255, 0.945);
+    transition: 300ms;
+    font-size: 14.5px;
+}
+
+.login-user h1 {
+
+    color: white;
+    font-family: sans-serif;
+    background-color: rgba(0, 0, 0, 0);
+    margin-bottom: 40px;
 }
 
 .login-user input:focus {
@@ -101,7 +132,7 @@ body {
     border: solid 1px rgba(0, 0, 0, 0);
     width: 150px;
     border-radius: 30px;
-    background-color: rgb(255, 166, 0);
+    background-color: rgb(0, 132, 255);
     font-size: 14px;
     padding: 22px;
     transition: 300ms;
